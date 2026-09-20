@@ -27,8 +27,12 @@ export default function PedidoTable({
   loadPedidos
 }: PedidoTableProps) {
   
+  /*
   const [editing,setEditing] = useState<Pedido | null>(null)
   const [original,setOriginal] = useState<Pedido | null>(null)
+  */
+  const [editing,setEditing] = useState<Pedido | null>(null); void editing;
+  const [original,setOriginal] = useState<Pedido | null>(null); void original;
   
   const deletePedido = async(id:number)=>{
     if(!confirm("Eliminar Pedido?")) return
