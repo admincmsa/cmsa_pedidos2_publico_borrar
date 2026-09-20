@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import api from "../../services/api"
-import { PlusCircle, Truck, RefreshCw, Trash2, Lock } from "lucide-react"
+import { PlusCircle, Truck, RefreshCw, Trash2, Lock, Eye } from "lucide-react"
 
 interface PedidoResumen {
   id: number
@@ -140,6 +140,15 @@ export default function PedidoComercialLista() {
                   </td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-2">
+                      {(
+                        <button
+                          onClick={() => navigate(`/comercial/detalle/${p.id}`)}
+                          title="Ver detalle del pedido"
+                          className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-100"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      )}
                       {p.estado !== "remisionado" && (
                         <button
                           title="Eliminar pedido"

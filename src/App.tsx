@@ -120,6 +120,7 @@ import PedidoComercialLista from "./components/pedidos/PedidoComercialLista"
 import PedidoForm from "./components/pedidos/PedidoForm"
 import PedidoBodegaLista from "./components/pedidos/PedidoBodegaLista"
 import PedidoBodegaDetalle from "./components/pedidos/PedidoBodegaDetalle"
+import PedidoComercialDetalle from "./components/pedidos/PedidoComercialDetalle"
 
 function Inicio() {
   const { usuario } = useAuth()
@@ -186,6 +187,14 @@ export default function App() {
             element={
               <ProtectedRoute rolesPermitidos={["admin", "bodega"]}>
                 <Layout><PedidoBodegaDetalle /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/comercial/detalle/:pedidoId"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin", "comercial"]}>
+                <Layout><PedidoComercialDetalle /></Layout>
               </ProtectedRoute>
             }
           />

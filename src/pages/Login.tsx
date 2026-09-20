@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { LogIn } from "lucide-react"
+import logoCmsa from "../logo-cmsa.png"
 
 export default function Login() {
 
@@ -37,9 +37,11 @@ export default function Login() {
         className="bg-white p-8 rounded-2xl shadow-md w-full max-w-sm space-y-4"
       >
         <div className="flex flex-col items-center mb-2">
-          <div className="bg-blue-600 text-white p-3 rounded-full mb-2">
-            <LogIn size={22} />
-          </div>
+          <img
+            src={logoCmsa}
+            alt="Logo CMSA"
+            className="h-16 w-auto object-contain mb-4"
+          />
           <h1 className="text-xl font-semibold text-gray-800">
             Gestión de Pedidos
           </h1>

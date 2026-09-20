@@ -4,7 +4,8 @@ const api = axios.create({
   //baseURL:"http://localhost:5006"
   //baseURL:"http://192.168.35.248:5006"//Portatil Paola en ITC Wifi
   //baseURL:"http://192.168.35.248:5007"//Portatil Paola en Casa CM LAN
-  baseURL:"http://10.81.2.12:5007"//Srv
+  baseURL:"http://10.81.2.12:5007"//Srv desde el PC de desarrollo hacia el srv
+  //baseURL:"/api"//Srv produccion, Nota el orden importante en el location /api/: al tener la barra final en proxy_pass http://10.81.2.12:5007/;, nginx quita el prefijo /api/ antes de reenviar — así http://cmsapedidos.isashiia.com/api/login llega al backend como http://10.81.2.12:5007/login
 
 })
 
