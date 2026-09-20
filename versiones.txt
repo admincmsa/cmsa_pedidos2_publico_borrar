@@ -1,0 +1,2 @@
+v1.0.0 20sep2026 Primera version estable
+v1.0.1 20sep2026 se eliminan archivos no usados

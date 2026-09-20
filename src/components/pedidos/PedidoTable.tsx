@@ -1,7 +1,7 @@
 //import { useEffect, useState } from "react"
 import { useState } from "react"
 import api from "../../services/api"
-import { formatDate } from "../../utils/date"
+//import { formatDate } from "../../utils/date"
 import type { Pedido } from "../../types/pedido";
 import {
   CheckCircle2,
@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import type {ColDef} from "ag-grid-community";
 import { AgGridReact, AgGridProvider } from "ag-grid-react";
-import { themeQuartz,themeBalham } from "ag-grid-community";
+import { themeBalham } from "ag-grid-community";
 import { AllCommunityModule } from 'ag-grid-community';
 //import { useMemo } from "react";
 
@@ -26,7 +26,7 @@ export default function PedidoTable({
   pedidos,
   loadPedidos
 }: PedidoTableProps) {
-
+  
   const [editing,setEditing] = useState<Pedido | null>(null)
   const [original,setOriginal] = useState<Pedido | null>(null)
   
@@ -45,6 +45,7 @@ export default function PedidoTable({
     await api.put(`/pedido_activar/${id}`)
     loadPedidos()
   }
+  /*
   const updatePedido = async(e:any)=>{
     e.preventDefault()
     if(!editing) return
@@ -63,6 +64,7 @@ export default function PedidoTable({
       console.error(error)
     }
   }
+  
   // Detectar cambios en el formulario de edición
   const getChanges = () => {
     if (!editing || !original) return {}
@@ -74,7 +76,8 @@ export default function PedidoTable({
     })
     return changes
   }
-
+  */
+  
   const modules = [AllCommunityModule]
   const defaultColDef = {
     sortable: true,
@@ -263,7 +266,7 @@ export default function PedidoTable({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded shadow w-[400px] relative">
             <button className="absolute top-2 right-2 text-gray-500" onClick={() => setEditing(null)}>✕</button>
-            <form onSubmit={updateEmpleado} className="mt-6 space-y-3 border-t pt-4" >
+            <form onSubmit={updatePedido} className="mt-6 space-y-3 border-t pt-4" >
               <h3 className="font-semibold">Editar Empleado</h3>
               <input placeholder="Nombre" className="border p-2 w-full" value={editing.nombre} onChange={(e)=>setEditing({...editing,nombre:e.target.value})} />
               <input placeholder="Identificación" className="border p-2 w-full" value={editing.numero_documento} onChange={(e)=>setEditing({...editing,numero_documento:e.target.value})}/>
