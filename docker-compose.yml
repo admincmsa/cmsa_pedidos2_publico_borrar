@@ -1,0 +1,16 @@
+services:
+  ia_fe1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ia_fe1:1.0.0
+    container_name: cont_ia_fe1
+    restart: unless-stopped
+    networks:
+      - ti_noc_network
+    environment:
+      - TZ=America/Bogota
+
+networks:
+  ti_noc_network:
+    external: true   # la red donde ya vive tu nginx reverse-proxy
