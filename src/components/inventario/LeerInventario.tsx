@@ -159,10 +159,10 @@ export default function LeerInventario() {
                 eliminarSerial(params.data.id)
               }
             }}
-            className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50"
+            className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
             title="Eliminar"
           >
-            <Trash2 size={18} />
+            <Trash2 size={16} />
           </button>
         )
 
@@ -174,19 +174,19 @@ export default function LeerInventario() {
 
   return (
 
-    <div className="bg-white p-6 rounded shadow">
+    <div className="bg-white p-4 xl:p-6 rounded shadow">
 
       {/* ENCABEZADO */}
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
 
         <div>
 
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-base xl:text-lg font-semibold">
             Lectura de Inventario
           </h2>
 
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs xl:text-sm text-gray-500 mt-1">
             Escanee los seriales utilizando la pistola lectora
           </p>
 
@@ -195,11 +195,11 @@ export default function LeerInventario() {
 
         <div className="text-right">
 
-          <div className="text-sm text-gray-500">
+          <div className="text-xs xl:text-sm text-gray-500">
             Total de lecturas
           </div>
 
-          <div className="text-2xl font-bold text-blue-600">
+          <div className="text-xl xl:text-2xl font-bold text-blue-600">
             {seriales.length}
           </div>
 
@@ -210,13 +210,13 @@ export default function LeerInventario() {
 
       {/* ESTADO DEL LECTOR */}
 
-      <div className="mb-6 border rounded-lg p-4 bg-gray-50">
+      <div className="mb-4 border rounded-lg p-3 xl:p-4 bg-gray-50">
 
-        <div className="text-sm text-gray-500 mb-1">
+        <div className="text-xs xl:text-sm text-gray-500 mb-1">
           Último serial leído
         </div>
 
-        <div className="text-xl font-semibold">
+        <div className="text-base xl:text-xl font-semibold font-mono break-all">
 
           {ultimoSerial !== ""
             ? ultimoSerial
@@ -234,8 +234,13 @@ export default function LeerInventario() {
         className="ag-theme-quartz"
         style={{
           width: "100%",
-          height: "500px"
-        }}
+          // Ocupa el alto disponible de la ventana (mínimo 250 px) en vez de 500 px fijos
+          height: "calc(100vh - 300px)",
+          minHeight: "250px",
+          // Tamaños de la tabla
+          "--ag-font-size": "12px",
+          "--ag-header-font-size": "12px",
+        } as React.CSSProperties}
       >
 
         <AgGridReact<SerialLeido>
@@ -246,6 +251,8 @@ export default function LeerInventario() {
           }}
           animateRows={true}
           suppressCellFocus={true}
+          rowHeight={32}
+          headerHeight={34}
         />
 
       </div>

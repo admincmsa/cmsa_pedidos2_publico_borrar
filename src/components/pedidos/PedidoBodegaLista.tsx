@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import api from "../../services/api"
-import { ArrowRight, RefreshCw } from "lucide-react"
+import { ArrowRight, RefreshCw, MapPin } from "lucide-react"
+import { estadoPedido } from "../../utils/estadosPedido"
 
 interface PedidoResumen {
   id: number
   f430_consec_docto: number
   f430_id_fecha: string | null
   f200_razon_social_pedido_fact: string
+  direccion_envio: string | null
+  ciudad_envio: string | null
   estado: string
   total_lineas: number
 }
@@ -38,14 +41,14 @@ export default function PedidoBodegaLista() {
   }, [])
 
   return (
-    <div className="p-6">
+    <div className="p-4 xl:p-6">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-semibold text-gray-800">Pedidos por separar</h1>
+        <h1 className="text-base xl:text-xl font-semibold text-gray-800">Pedidos por separar</h1>
         <button
           onClick={cargarPedidos}
-          className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs xl:text-sm"
         >
-          <RefreshCw size={16} /> Actualizar
+          <RefreshCw size={14} /> Actualizar
         </button>
       </div>
 
@@ -54,14 +57,30 @@ export default function PedidoBodegaLista() {
           <button
             key={p.id}
             onClick={() => navigate(`/bodega/${p.id}`)}
-            className="flex justify-between items-center bg-white p-4 rounded-xl shadow hover:shadow-md transition text-left"
+            className="flex justify-between items-center bg-white p-3 xl:p-4 rounded-xl shadow hover:shadow-md transition text-left"
           >
             <div>
-              <p className="font-semibold text-gray-800">Pedido {p.f430_consec_docto}</p>
-              <p className="text-sm text-gray-500">{p.f200_razon_social_pedido_fact}</p>
-              <p className="text-xs text-gray-400">{p.total_lineas} línea(s) · {p.estado === "ingresado" ? "Sin iniciar" : "En proceso"}</p>
+              <p className="text-sm xl:text-base font-semibold text-gray-800">Pedido {p.f430_consec_docto}</p>
+              <p className="text-xs xl:text-sm text-gray-500">{p.f200_razon_social_pedido_fact}</p>
+              {(p.ciudad_envio || p.direccion_envio) && (
+                <p className="text-xs xl:text-sm text-gray-600 flex items-start gap-1">
+                  <MapPin size={14} className="mt-0.5 shrink-0 text-gray-400" />
+                  <span>
+                    <span className="font-medium">{p.ciudad_envio || "—"}</span>
+                    {p.direccion_envio && <> · {p.direccion_envio}</>}
+                  </span>
+                </p>
+              )}
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${estadoPedido(p.estado).color}`}>
+                  {estadoPedido(p.estado).texto}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {p.total_lineas} línea(s) · {p.estado === "ingresado" ? "sin iniciar" : "separación en curso"}
+                </span>
+              </div>
             </div>
-            <ArrowRight className="text-gray-400" size={20} />
+            <ArrowRight className="text-gray-400" size={18} />
           </button>
         ))}
 

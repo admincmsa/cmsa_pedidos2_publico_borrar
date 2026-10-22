@@ -21,12 +21,45 @@ interface PedidoSiesa {
   f430_id_fecha: string
   f200_razon_social_pedido_fact: string
   f431_notas: string
+  direccion_envio: string | null
+  ciudad_envio: string | null
+  depto_envio: string | null
   detalle: DetalleItem[]
 }
 
 interface PedidoFormProps {
   onCreated?: () => void
 }
+
+// ==========================================================
+// FORMATOS (es-CO): moneda y número
+// ==========================================================
+
+const formatoMoneda = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+const formatoNumero = new Intl.NumberFormat("es-CO", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+// Siesa puede enviar los valores como texto: se convierten a número
+const aNumero = (valor: unknown): number | null => {
+  if (valor === null || valor === undefined || valor === "") return null
+  const n = Number(valor)
+  return Number.isFinite(n) ? n : null
+}
+
+const columnaNumerica = (formato: Intl.NumberFormat): Partial<ColDef<DetalleItem>> => ({
+  valueGetter: (p) => aNumero(p.data?.[p.colDef.field as keyof DetalleItem]),
+  valueFormatter: (p) => (p.value === null || p.value === undefined ? "" : formato.format(p.value)),
+  filter: "agNumberColumnFilter",
+  cellStyle: { display: "flex", alignItems: "center", justifyContent: "flex-end" },
+})
 
 export default function PedidoForm({
   onCreated,
@@ -108,6 +141,9 @@ export default function PedidoForm({
         f430_id_fecha: primero.f430_id_fecha,
         f200_razon_social_pedido_fact: primero.f200_razon_social_pedido_fact,
         f431_notas: primero.f431_notas,
+        direccion_envio: primero.direccion_envio ?? null,
+        ciudad_envio: primero.ciudad_envio ?? null,
+        depto_envio: primero.depto_envio ?? null,
         detalle,
       })
 
@@ -155,6 +191,9 @@ export default function PedidoForm({
           f430_id_fecha: pedido.f430_id_fecha,
           f200_razon_social_pedido_fact: pedido.f200_razon_social_pedido_fact,
           f431_notas: pedido.f431_notas,
+          direccion_envio: pedido.direccion_envio,
+          ciudad_envio: pedido.ciudad_envio,
+          depto_envio: pedido.depto_envio,
           detalle: pedido.detalle,
         }
       )
@@ -212,8 +251,8 @@ export default function PedidoForm({
       headerBackgroundColor: '#adacac47',
       headerTextColor: 'black',
       spacing: 4,
-      fontSize: 12,
-      headerFontSize: 14,
+      fontSize: 11,
+      headerFontSize: 12,
       accentColor: '#b05fee',
     })
 
@@ -226,7 +265,7 @@ export default function PedidoForm({
     autoHeaderHeight: true,
     cellStyle: { display: 'flex', alignItems: 'center' },
   }
-
+  /*
   const columnDefs: ColDef<DetalleItem>[] = useMemo(() => [
     { field: "f120_id", headerName: "F120_id", width: 130 },
     { field: "f120_referencia", headerName: "Referencia", width: 150 },
@@ -236,6 +275,17 @@ export default function PedidoForm({
     { field: "f431_vlr_bruto", headerName: "Vlr Total", width: 130 },
     { field: "f431_vlr_neto", headerName: "Vlr Total IVA", width: 150 },
   ], [])
+  */
+
+  const columnDefs: ColDef<DetalleItem>[] = useMemo(() => [
+    { field: "f120_id", headerName: "F120_id", width: 130 },
+    //{ field: "f120_referencia", headerName: "Referencia", width: 150 },
+    { field: "f120_descripcion", headerName: "Descripción", flex: 1, minWidth: 200 },
+    { field: "f431_cant_pedida_base", headerName: "Cant Pedida", width: 130, ...columnaNumerica(formatoNumero) },
+    { field: "f431_precio_unitario_base", headerName: "Vlr Unit", width: 130, ...columnaNumerica(formatoMoneda) },
+    { field: "f431_vlr_bruto", headerName: "Vlr Total", width: 130, ...columnaNumerica(formatoMoneda) },
+    { field: "f431_vlr_neto", headerName: "Vlr Total IVA", width: 150, ...columnaNumerica(formatoMoneda) },
+  ], [])
 
 
   // ==========================================================
@@ -244,14 +294,14 @@ export default function PedidoForm({
 
   return (
 
-    <div className="bg-white p-6 rounded shadow">
+    <div className="bg-white p-4 xl:p-6 rounded shadow">
 
       {/* ================================================== */}
       {/* BUSCADOR */}
       {/* ================================================== */}
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-xs xl:text-sm font-medium text-gray-700 mb-1">
           Pedido:
         </label>
         <div className="flex gap-2">
@@ -259,20 +309,20 @@ export default function PedidoForm({
             name="f430_consec_docto"
             placeholder="Número de pedido"
             value={consecDocto}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             onChange={(e) => setConsecDocto(e.target.value)}
           />
           <button
             type="button"
             onClick={handleBuscarPedido}
             disabled={buscando}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs xl:text-sm"
           >
             {buscando ? "Buscando..." : "Buscar"}
           </button>
         </div>
         {errorBusqueda && (
-          <p className="text-sm text-red-600 mt-1">
+          <p className="text-xs xl:text-sm text-red-600 mt-1">
             {errorBusqueda}
           </p>
         )}
@@ -290,20 +340,30 @@ export default function PedidoForm({
           {/* CABECERA EN TEXTO */}
           {/* ---------------------------------------------- */}
 
-          <div className="mb-4 space-y-1 border border-gray-200 rounded-lg p-4 bg-gray-50">
-            <p className="text-sm text-gray-800">
+          <div className="mb-4 space-y-1 border border-gray-200 rounded-lg p-3 xl:p-4 bg-gray-50">
+            <p className="text-xs xl:text-sm text-gray-800">
               <span className="font-semibold">Pedido:</span>{" "}
               {pedido.f430_consec_docto}
             </p>
-            <p className="text-sm text-gray-800">
+            <p className="text-xs xl:text-sm text-gray-800">
               <span className="font-semibold">Fecha:</span>{" "}
               {pedido.f430_id_fecha}
             </p>
-            <p className="text-sm text-gray-800">
+            <p className="text-xs xl:text-sm text-gray-800">
               <span className="font-semibold">Cliente:</span>{" "}
               {pedido.f200_razon_social_pedido_fact}
             </p>
-            <p className="text-sm text-gray-800">
+            <p className="text-xs xl:text-sm text-gray-800">
+              <span className="font-semibold">Dirección de envío:</span>{" "}
+              {pedido.direccion_envio || "—"}
+            </p>
+            <p className="text-xs xl:text-sm text-gray-800">
+              <span className="font-semibold">Ciudad:</span>{" "}
+              {pedido.ciudad_envio
+                ? `${pedido.ciudad_envio}${pedido.depto_envio && pedido.depto_envio !== pedido.ciudad_envio ? `, ${pedido.depto_envio}` : ""}`
+                : "—"}
+            </p>
+            <p className="text-xs xl:text-sm text-gray-800">
               <span className="font-semibold">Notas:</span>{" "}
               {pedido.f431_notas || "—"}
             </p>
@@ -329,7 +389,7 @@ export default function PedidoForm({
           </div>
 
           {errorGuardar && (
-            <p className="text-sm text-red-600 mb-2">
+            <p className="text-xs xl:text-sm text-red-600 mb-2">
               {errorGuardar}
             </p>
           )}
@@ -347,7 +407,7 @@ export default function PedidoForm({
                 setErrorBusqueda(null)
                 setErrorGuardar(null)
               }}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs xl:text-sm"
             >
               Cancelar
             </button>
@@ -355,7 +415,7 @@ export default function PedidoForm({
               type="button"
               onClick={handleGuardarPedido}
               disabled={guardando}
-              className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs xl:text-sm"
             >
               {guardando ? "Guardando..." : "Guardar Pedido"}
             </button>

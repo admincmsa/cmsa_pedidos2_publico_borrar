@@ -99,8 +99,8 @@ export default function PedidoTable({
       headerBackgroundColor: '#adacac47',
       headerTextColor: 'black',    
       spacing: 4,
-      fontSize: 12,
-      headerFontSize: 14,
+      fontSize: 11,
+      headerFontSize: 12,
       accentColor: '#b05fee',
     });
   const renderCentered = (value: any) => ( // Render para centrar las celdas
@@ -165,7 +165,7 @@ export default function PedidoTable({
               className="p-1 rounded-lg text-green-600 hover:bg-green-100"
               onClick={() => activatePedido(params.data.id)}
             >
-              <CheckCircle2 size={18} />
+              <CheckCircle2 size={16} />
             </button>
           ) : (
             <button
@@ -173,7 +173,7 @@ export default function PedidoTable({
               className="p-1 rounded-lg text-orange-600 hover:bg-orange-100"
               onClick={() => deactivatePedido(params.data.id)}
             >
-              <XCircle size={18} />
+              <XCircle size={16} />
             </button>
           )}
           
@@ -185,7 +185,7 @@ export default function PedidoTable({
               setOriginal({ ...params.data });
             }}
           >
-            <Pencil size={18} />
+            <Pencil size={16} />
           </button>
   
           <button
@@ -193,7 +193,7 @@ export default function PedidoTable({
             className="p-1 rounded-lg text-red-600 hover:bg-red-100"
             onClick={() => deletePedido(params.data.id)}
           >
-            <Trash2 size={18} />
+            <Trash2 size={16} />
           </button>
           
           
@@ -203,8 +203,8 @@ export default function PedidoTable({
   ]
   /*
   return (
-    <div className="bg-white p-6 rounded shadow">
-      <h2 className="text-lg font-semibold mb-4">
+    <div className="bg-white p-4 xl:p-6 rounded shadow">
+      <h2 className="text-base xl:text-lg font-semibold mb-4">
         Lista de Empleados
       </h2>
       <table className="w-full border">
@@ -233,9 +233,9 @@ export default function PedidoTable({
               <td className="border p-2">
                 <div className="flex flex-col gap-1">
                   {v.documentos.map(doc => (
-                    //<a key={doc.id} href={`http://127.0.0.1:5000/${doc.ruta}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">{doc.archivo}</a>
+                    //<a key={doc.id} href={`http://127.0.0.1:5000/${doc.ruta}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs xl:text-sm">{doc.archivo}</a>
                     
-                    <a key={`${index+1}-${doc.id}`} href={`http://127.0.0.1:5000/${doc.ruta}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">{doc.archivo}</a>
+                    <a key={`${index+1}-${doc.id}`} href={`http://127.0.0.1:5000/${doc.ruta}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs xl:text-sm">{doc.archivo}</a>
                     
                   ))
                   }
@@ -268,7 +268,7 @@ export default function PedidoTable({
 
       {editing && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow w-[400px] relative">
+          <div className="bg-white p-4 xl:p-6 rounded shadow w-[400px] relative">
             <button className="absolute top-2 right-2 text-gray-500" onClick={() => setEditing(null)}>✕</button>
             <form onSubmit={updatePedido} className="mt-6 space-y-3 border-t pt-4" >
               <h3 className="font-semibold">Editar Empleado</h3>
@@ -278,7 +278,7 @@ export default function PedidoTable({
               <input placeholder="Empresa" className="border p-2 w-full" value={editing.empresa} onChange={(e)=>setEditing({...editing,empresa:e.target.value})}/>
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" className="bg-gray-400 text-white px-3 py-1 rounded" onClick={() => setEditing(null)}>Cancelar</button>
-                <button className="bg-gray-600 text-white px-4 py-2 rounded">Guardar Cambios</button>
+                <button className="bg-gray-600 text-white px-3 py-1.5 rounded">Guardar Cambios</button>
               </div>
             </form>
           </div>

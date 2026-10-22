@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import api from "../../services/api"
+import api, { mensajeError } from "../../services/api"
+import { estadoPedido, alertaSiesa } from "../../utils/estadosPedido"
 import { Trash2, CheckCircle2, ArrowLeft, AlertTriangle } from "lucide-react"
 
 interface Serial {
@@ -31,15 +32,9 @@ interface PedidoDetalle {
   f200_razon_social_pedido_fact: string
   f431_notas: string
   estado: string
+  estado_siesa: number | null
+  remision: string | null
   detalle: LineaDetalle[]
-}
-
-const ESTADO_LABEL: Record<string, { texto: string; color: string }> = {
-  ingresado: { texto: "Ingresado", color: "bg-gray-100 text-gray-700" },
-  en_separacion: { texto: "En separación", color: "bg-yellow-100 text-yellow-700" },
-  separado: { texto: "Separado", color: "bg-blue-100 text-blue-700" },
-  comprometido: { texto: "Comprometido", color: "bg-purple-100 text-purple-700" },
-  remisionado: { texto: "Remisionado", color: "bg-green-100 text-green-700" },
 }
 
 export default function PedidoComercialDetalle() {
@@ -85,34 +80,32 @@ export default function PedidoComercialDetalle() {
 
     } catch (err: any) {
         console.error("Error eliminando serial:", err)
-        setError(
-        err?.response?.data?.error ||
-        err?.message ||
-        "Error al eliminar el rollo"
-        )
+        setError(mensajeError(err, "Error al eliminar el rollo"))
     } finally {
         setEliminandoSerial(null)
     }
     }
 
-  if (cargando) return <div className="p-6 text-gray-400">Cargando pedido...</div>
-  if (!pedido) return <div className="p-6 text-red-600">{error || "Pedido no encontrado"}</div>
+  if (cargando) return <div className="p-4 xl:p-6 text-gray-400">Cargando pedido...</div>
+  if (!pedido) return <div className="p-4 xl:p-6 text-red-600">{error || "Pedido no encontrado"}</div>
 
-  const estado = ESTADO_LABEL[pedido.estado] || { texto: pedido.estado, color: "bg-gray-100 text-gray-700" }
+  const estado = estadoPedido(pedido.estado)
+  const alerta = alertaSiesa(pedido.estado, pedido.estado_siesa)
+  const bloqueado = pedido.estado === "comprometido" || pedido.estado === "remisionado"
 
   return (
-    <div className="p-6">
+    <div className="p-4 xl:p-6">
 
       <button
         onClick={() => navigate("/comercial")}
-        className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 mb-4"
+        className="flex items-center gap-1 text-xs xl:text-sm text-gray-600 hover:text-blue-600 mb-4"
       >
-        <ArrowLeft size={16} /> Volver a la lista
+        <ArrowLeft size={14} /> Volver a la lista
       </button>
 
-      <div className="bg-white rounded-xl shadow p-4 mb-4">
+      <div className="bg-white rounded-xl shadow p-3 xl:p-4 mb-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-800">
+          <h1 className="text-base xl:text-lg font-semibold text-gray-800">
             Pedido {pedido.f430_consec_docto} — {pedido.f200_razon_social_pedido_fact}
           </h1>
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${estado.color}`}>
@@ -120,12 +113,22 @@ export default function PedidoComercialDetalle() {
           </span>
         </div>
         {pedido.f431_notas && (
-          <p className="text-sm text-gray-500 mt-1">Notas: {pedido.f431_notas}</p>
+          <p className="text-xs xl:text-sm text-gray-500 mt-1">Notas: {pedido.f431_notas}</p>
+        )}
+        {pedido.remision && (
+          <p className="text-xs xl:text-sm text-gray-600 mt-1">
+            Remisión <span className="font-mono">{pedido.remision}</span>
+          </p>
+        )}
+        {alerta && (
+          <p className="text-xs xl:text-sm text-red-600 mt-1 flex items-center gap-1">
+            <AlertTriangle size={14} /> {alerta}
+          </p>
         )}
       </div>
 
       {error && (
-        <p className="text-sm text-red-600 mb-3 flex items-center gap-1">
+        <p className="text-xs xl:text-sm text-red-600 mb-3 flex items-center gap-1">
           <AlertTriangle size={14} /> {error}
         </p>
       )}
@@ -141,14 +144,14 @@ export default function PedidoComercialDetalle() {
             : 0
 
           return (
-            <div key={d.id} className="bg-white rounded-xl shadow p-4">
+            <div key={d.id} className="bg-white rounded-xl shadow p-3 xl:p-4">
 
               <div className="flex justify-between items-center mb-2">
-                <p className="font-medium text-gray-800">
+                <p className="text-sm xl:text-base font-medium text-gray-800">
                   {d.f120_referencia} — {d.f120_descripcion}
                 </p>
                 {d.estado_linea === "separado" && (
-                  <CheckCircle2 className="text-green-600" size={18} />
+                  <CheckCircle2 className="text-green-600" size={16} />
                 )}
               </div>
 
@@ -166,7 +169,7 @@ export default function PedidoComercialDetalle() {
                 {" · "}{d.seriales.length} rollo(s)
               </p>
 
-              <table className="w-full text-sm">
+              <table className="w-full text-xs xl:text-sm">
                 <thead className="text-gray-500">
                   <tr>
                     <th className="text-left py-1">Serie</th>
@@ -186,6 +189,7 @@ export default function PedidoComercialDetalle() {
                       <td className="py-1">{s.peso_kg.toFixed(2)}</td>
                       <td className="py-1 text-gray-500">{s.usuario}</td>
                       <td className="py-1 text-right">
+                        {!bloqueado && (
                         <button
                             type="button"
                             onClick={() => handleEliminarSerial(s.id, s.serial)}
@@ -193,8 +197,9 @@ export default function PedidoComercialDetalle() {
                             className="text-red-600 hover:text-red-700 disabled:opacity-50"
                             title="Quitar este rollo del pedido"
                             >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
                             </button>
+                        )}
                       </td>
                     </tr>
                   ))}

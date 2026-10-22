@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import api from "../services/api"
 import { useAuth } from "../context/AuthContext"
-import { Package, Truck, Warehouse, CheckCircle2, Lock } from "lucide-react"
+import { Truck, Warehouse, CheckCircle2, Lock } from "lucide-react"
+import { ESTADOS } from "../utils/estadosPedido"
 
 interface DashboardResumen {
   anio: number
@@ -11,6 +12,12 @@ interface DashboardResumen {
     separado: number
     comprometido: number
     remisionado: number
+  }
+  conteo_visible?: {
+    por_separar: number
+    separado: number
+    comprometido: number
+    cumplido: number
   }
   ingresados_por_mes: number[]
   remisionados_por_mes: number[]
@@ -51,34 +58,37 @@ export default function Dashboard() {
     return <div className="p-6 text-red-600">No se pudo cargar la información del dashboard.</div>
   }
 
+  // Conteo por estado visible (backend v1.1.3); con un backend anterior se calcula aquí
+  const c = resumen.conteo_estados
+  const conteo = resumen.conteo_visible ?? {
+    por_separar: (c.ingresado ?? 0) + (c.en_separacion ?? 0),
+    separado: c.separado ?? 0,
+    comprometido: c.comprometido ?? 0,
+    cumplido: c.remisionado ?? 0,
+  }
+
   const tarjetas = [
     {
-      label: "Ingresados",
-      valor: resumen.conteo_estados.ingresado,
-      icon: Package,
-      color: "text-gray-600 bg-gray-100",
-    },
-    {
-      label: "En separación",
-      valor: resumen.conteo_estados.en_separacion,
+      label: ESTADOS.por_separar.texto,
+      valor: conteo.por_separar,
       icon: Warehouse,
       color: "text-yellow-600 bg-yellow-100",
     },
     {
-      label: "Separados",
-      valor: resumen.conteo_estados.separado,
+      label: ESTADOS.separado.texto,
+      valor: conteo.separado,
       icon: CheckCircle2,
       color: "text-blue-600 bg-blue-100",
     },
     {
-      label: "Comprometidos",
-      valor: resumen.conteo_estados.comprometido,
+      label: ESTADOS.comprometido.texto,
+      valor: conteo.comprometido,
       icon: Lock,
       color: "text-purple-600 bg-purple-100",
     },
     {
-      label: "Remisionados",
-      valor: resumen.conteo_estados.remisionado,
+      label: ESTADOS.cumplido.texto,
+      valor: conteo.cumplido,
       icon: Truck,
       color: "text-green-600 bg-green-100",
       detalle: (
@@ -111,7 +121,7 @@ export default function Dashboard() {
       {/* TARJETAS DE ESTADO */}
       {/* ================================================== */}
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {tarjetas.map((t) => {
           const Icon = t.icon
           return (
@@ -128,7 +138,7 @@ export default function Dashboard() {
       </div>
 
       {/* ================================================== */}
-      {/* GRÁFICA DE BARRAS: INGRESADOS VS REMISIONADOS POR MES */}
+      {/* GRÁFICA DE BARRAS: INGRESADOS VS CUMPLIDOS POR MES */}
       {/* ================================================== */}
 
       <div className="bg-white rounded-xl shadow p-6">
@@ -141,7 +151,7 @@ export default function Dashboard() {
               <span className="w-3 h-3 rounded bg-blue-500 inline-block" /> Ingresados
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded bg-green-500 inline-block" /> Remisionados
+              <span className="w-3 h-3 rounded bg-green-500 inline-block" /> Cumplidos
             </span>
           </div>
         </div>

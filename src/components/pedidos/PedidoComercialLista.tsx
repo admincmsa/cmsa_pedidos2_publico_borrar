@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import api from "../../services/api"
-import { PlusCircle, Truck, RefreshCw, Trash2, Lock, Eye } from "lucide-react"
+import api, { mensajeError } from "../../services/api"
+import { PlusCircle, Truck, RefreshCw, Trash2, Lock, Eye, Link2, AlertTriangle } from "lucide-react"
+import { useAuth } from "../../context/AuthContext"
+import { estadoPedido, alertaSiesa } from "../../utils/estadosPedido"
 
 interface PedidoResumen {
   id: number
@@ -9,15 +11,9 @@ interface PedidoResumen {
   f430_id_fecha: string | null
   f200_razon_social_pedido_fact: string
   estado: string
+  estado_siesa: number | null
+  remision: string | null
   total_lineas: number
-}
-
-const ESTADO_LABEL: Record<string, { texto: string; color: string }> = {
-  ingresado: { texto: "Ingresado", color: "bg-gray-100 text-gray-700" },
-  en_separacion: { texto: "En separación", color: "bg-yellow-100 text-yellow-700" },
-  separado: { texto: "Separado", color: "bg-blue-100 text-blue-700" },
-  comprometido: { texto: "Comprometido", color: "bg-purple-100 text-purple-700" },
-  remisionado: { texto: "Remisionado", color: "bg-green-100 text-green-700" },
 }
 
 export default function PedidoComercialLista() {
@@ -48,29 +44,48 @@ export default function PedidoComercialLista() {
     cargarPedidos()
   }, [])
 
+  const { usuario } = useAuth()
+
+  // Solo admin: registra en la base un compromiso que ya quedó en Siesa, sin reenviarlo
+  const handleRegistrarCompromiso = async (id: number) => {
+    if (!confirm("Esto NO envía nada a Siesa: registra en la app el compromiso que ya existe en Siesa para este pedido. ¿Continuar?")) return
+    setComprometiendo(id)
+    try {
+      const res = await api.post(`/pedido_registrar_compromiso/${id}`)
+      alert(res.data?.mensaje || "Compromiso registrado")
+      await cargarPedidos()
+    } catch (err: any) {
+      alert(mensajeError(err, "Error al registrar el compromiso"))
+    } finally {
+      setComprometiendo(null)
+    }
+  }
+
   const handleComprometer = async (id: number) => {
-    if (!confirm("¿Confirmas comprometer el inventario de este pedido? Los elementos separados dejarán de estar disponibles para otros clientes.")) return
+    if (!confirm("¿Confirmas comprometer en SIESA los rollos separados de este pedido? Dejarán de estar disponibles para otros clientes y ya no se podrán quitar del pedido.")) return
 
     setComprometiendo(id)
     try {
-      await api.post(`/pedido_comprometer/${id}`)
+      const res = await api.post(`/pedido_comprometer/${id}`)
+      alert(res.data?.mensaje || "Inventario comprometido en Siesa")
       await cargarPedidos()
     } catch (err: any) {
-      alert(err?.response?.data?.error || "Error al comprometer el inventario")
+      alert(mensajeError(err, "Error al comprometer el inventario"))
     } finally {
       setComprometiendo(null)
     }
   }
 
   const handleRemisionar = async (id: number) => {
-    if (!confirm("¿Confirmas crear la remisión de este pedido en SIESA?")) return
+    if (!confirm("¿Confirmas crear la remisión de este pedido en SIESA? El pedido quedará Cumplido.")) return
 
     setRemisionando(id)
     try {
-      await api.post(`/pedido_remisionar/${id}`)
+      const res = await api.post(`/pedido_remisionar/${id}`)
+      alert(res.data?.mensaje || "Pedido remisionado en Siesa")
       await cargarPedidos()
     } catch (err: any) {
-      alert(err?.response?.data?.error || "Error al remisionar el pedido")
+      alert(mensajeError(err, "Error al remisionar el pedido"))
     } finally {
       setRemisionando(null)
     }
@@ -84,61 +99,70 @@ export default function PedidoComercialLista() {
       await api.put(`/pedido_eliminar/${id}`)
       await cargarPedidos()
     } catch (err: any) {
-      alert(err?.response?.data?.error || "Error al eliminar el pedido")
+      alert(mensajeError(err, "Error al eliminar el pedido"))
     } finally {
       setEliminando(null)
     }
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 xl:p-6">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-semibold text-gray-800">Pedidos</h1>
+        <h1 className="text-base xl:text-xl font-semibold text-gray-800">Pedidos</h1>
         <div className="flex gap-2">
           <button
             onClick={cargarPedidos}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs xl:text-sm"
           >
-            <RefreshCw size={16} /> Actualizar
+            <RefreshCw size={14} /> Actualizar
           </button>
           <button
             onClick={() => navigate("/comercial/nuevo")}
-            className="flex items-center gap-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs xl:text-sm"
           >
-            <PlusCircle size={16} /> Nuevo Pedido
+            <PlusCircle size={14} /> Nuevo Pedido
           </button>
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+      {error && <p className="text-xs xl:text-sm text-red-600 mb-3">{error}</p>}
 
       <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs xl:text-sm">
           <thead className="bg-gray-50 text-gray-600">
             <tr>
-              <th className="text-left px-4 py-2">Pedido</th>
-              <th className="text-left px-4 py-2">Fecha</th>
-              <th className="text-left px-4 py-2">Cliente</th>
-              <th className="text-left px-4 py-2">Líneas</th>
-              <th className="text-left px-4 py-2">Estado</th>
-              <th className="text-left px-4 py-2">Acciones</th>
+              <th className="text-left px-3 py-1.5">Pedido</th>
+              <th className="text-left px-3 py-1.5">Fecha</th>
+              <th className="text-left px-3 py-1.5">Cliente</th>
+              <th className="text-left px-3 py-1.5">Líneas</th>
+              <th className="text-left px-3 py-1.5">Estado</th>
+              <th className="text-left px-3 py-1.5">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {pedidos.map((p) => {
-              const estado = ESTADO_LABEL[p.estado] || { texto: p.estado, color: "bg-gray-100 text-gray-700" }
+              const estado = estadoPedido(p.estado)
+              const alerta = alertaSiesa(p.estado, p.estado_siesa)
               return (
                 <tr key={p.id} className="border-t">
-                  <td className="px-4 py-2 font-medium">{p.f430_consec_docto}</td>
-                  <td className="px-4 py-2">{p.f430_id_fecha || "—"}</td>
-                  <td className="px-4 py-2">{p.f200_razon_social_pedido_fact}</td>
-                  <td className="px-4 py-2">{p.total_lineas}</td>
-                  <td className="px-4 py-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${estado.color}`}>
+                  <td className="px-3 py-1.5 font-medium">{p.f430_consec_docto}</td>
+                  <td className="px-3 py-1.5">{p.f430_id_fecha || "—"}</td>
+                  <td className="px-3 py-1.5">{p.f200_razon_social_pedido_fact}</td>
+                  <td className="px-3 py-1.5">{p.total_lineas}</td>
+                  <td className="px-3 py-1.5">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${estado.color}`}>
                       {estado.texto}
                     </span>
+                    {estado.clave === "cumplido" && p.remision && (
+                      <div className="text-xs text-gray-500 font-mono mt-1">{p.remision}</div>
+                    )}
+                    {alerta && (
+                      <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
+                        <AlertTriangle size={12} /> {alerta}
+                      </div>
+                    )}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-3 py-1.5">
                     <div className="flex items-center gap-2">
                       {(
                         <button
@@ -146,17 +170,17 @@ export default function PedidoComercialLista() {
                           title="Ver detalle del pedido"
                           className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-100"
                         >
-                          <Eye size={16} />
+                          <Eye size={14} />
                         </button>
                       )}
-                      {p.estado !== "remisionado" && (
+                      {p.estado !== "remisionado" && p.estado !== "comprometido" && (
                         <button
                           title="Eliminar pedido"
                           onClick={() => handleEliminar(p.id, p.f430_consec_docto)}
                           disabled={eliminando === p.id}
                           className="p-1.5 rounded-lg text-red-600 hover:bg-red-100 disabled:opacity-50"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} />
                         </button>
                       )}
 
@@ -171,7 +195,18 @@ export default function PedidoComercialLista() {
                         </button>
                       )}
 
-                      {(p.estado === "separado" || p.estado === "comprometido") && (
+                      {p.estado === "separado" && usuario?.rol === "admin" && (
+                        <button
+                          title="Registrar compromiso de Siesa (sin reenviar)"
+                          onClick={() => handleRegistrarCompromiso(p.id)}
+                          disabled={comprometiendo === p.id}
+                          className="p-1.5 rounded-lg text-purple-700 hover:bg-purple-100 disabled:opacity-50"
+                        >
+                          <Link2 size={14} />
+                        </button>
+                      )}
+
+                      {p.estado === "comprometido" && (
                         <button
                           onClick={() => handleRemisionar(p.id)}
                           disabled={remisionando === p.id}

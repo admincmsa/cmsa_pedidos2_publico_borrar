@@ -252,7 +252,7 @@ export default function PedidoForm({
 
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Pedido:
+          Pedido xxxxxx:
         </label>
         <div className="flex gap-2">
           <input
