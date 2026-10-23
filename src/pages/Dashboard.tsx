@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import api from "../services/api"
 import { useAuth } from "../context/AuthContext"
-import { Truck, Warehouse, CheckCircle2, Lock } from "lucide-react"
+import { Truck, Warehouse, PackageCheck } from "lucide-react"
 import { ESTADOS } from "../utils/estadosPedido"
 
 interface DashboardResumen {
@@ -14,9 +14,8 @@ interface DashboardResumen {
     remisionado: number
   }
   conteo_visible?: {
-    por_separar: number
+    creado: number
     separado: number
-    comprometido: number
     cumplido: number
   }
   ingresados_por_mes: number[]
@@ -58,33 +57,26 @@ export default function Dashboard() {
     return <div className="p-6 text-red-600">No se pudo cargar la información del dashboard.</div>
   }
 
-  // Conteo por estado visible (backend v1.1.3); con un backend anterior se calcula aquí
+  // Conteo por estado visible (backend v1.5.0); con un backend anterior se calcula aquí
   const c = resumen.conteo_estados
-  const conteo = resumen.conteo_visible ?? {
-    por_separar: (c.ingresado ?? 0) + (c.en_separacion ?? 0),
-    separado: c.separado ?? 0,
-    comprometido: c.comprometido ?? 0,
+  const conteo = resumen.conteo_visible?.creado !== undefined ? resumen.conteo_visible : {
+    creado: (c.ingresado ?? 0) + (c.en_separacion ?? 0) + (c.separado ?? 0),
+    separado: c.comprometido ?? 0,
     cumplido: c.remisionado ?? 0,
   }
 
   const tarjetas = [
     {
-      label: ESTADOS.por_separar.texto,
-      valor: conteo.por_separar,
+      label: ESTADOS.creado.texto,
+      valor: conteo.creado,
       icon: Warehouse,
-      color: "text-yellow-600 bg-yellow-100",
+      color: "text-cmsa-tinta bg-cmsa-amarillo",
     },
     {
       label: ESTADOS.separado.texto,
       valor: conteo.separado,
-      icon: CheckCircle2,
-      color: "text-blue-600 bg-blue-100",
-    },
-    {
-      label: ESTADOS.comprometido.texto,
-      valor: conteo.comprometido,
-      icon: Lock,
-      color: "text-purple-600 bg-purple-100",
+      icon: PackageCheck,
+      color: "text-white bg-cmsa-azul",
     },
     {
       label: ESTADOS.cumplido.texto,
@@ -121,7 +113,7 @@ export default function Dashboard() {
       {/* TARJETAS DE ESTADO */}
       {/* ================================================== */}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {tarjetas.map((t) => {
           const Icon = t.icon
           return (

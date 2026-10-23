@@ -2,36 +2,37 @@
 // ESTADOS VISIBLES DEL PEDIDO
 //
 // La base guarda el estado interno de la app (pedidos.estado); aquí se
-// traduce a los cuatro estados que ve el usuario:
+// traduce a los tres estados que ve el usuario. Separar es comprometer el
+// inventario en Siesa: un pedido separado es un pedido comprometido.
 //
-//   ingresado / en_separacion -> Aprobado - Por separar   (Siesa 2)
-//   separado                  -> Aprobado - Separado      (Siesa 2)
-//   comprometido              -> Comprometido             (Siesa 3)
-//   remisionado               -> Cumplido                 (Siesa 4)
+//   ingresado / en_separacion -> Creado                    (Siesa 2)
+//   comprometido              -> Separado (comprometido)   (Siesa 3)
+//   remisionado               -> Cumplido                  (Siesa 4)
+//
+// El interno "separado" solo dura mientras Siesa compromete, o quedó de antes
+// del cambio: sigue Creado y bodega lo termina comprometiéndolo.
 // ==========================================================
 
-export type EstadoVisible = "por_separar" | "separado" | "comprometido" | "cumplido"
+export type EstadoVisible = "creado" | "separado" | "cumplido"
 
 export const ESTADO_VISIBLE: Record<string, EstadoVisible> = {
-  ingresado: "por_separar",
-  en_separacion: "por_separar",
-  separado: "separado",
-  comprometido: "comprometido",
+  ingresado: "creado",
+  en_separacion: "creado",
+  separado: "creado",
+  comprometido: "separado",
   remisionado: "cumplido",
 }
 
 export const ESTADOS: Record<EstadoVisible, { texto: string; color: string }> = {
-  por_separar: { texto: "Aprobado - Por separar", color: "bg-yellow-100 text-yellow-800" },
-  separado: { texto: "Aprobado - Separado", color: "bg-blue-100 text-blue-700" },
-  comprometido: { texto: "Comprometido", color: "bg-purple-100 text-purple-700" },
+  creado: { texto: "Creado", color: "bg-cmsa-amarillo text-cmsa-tinta" },
+  separado: { texto: "Separado", color: "bg-cmsa-azul text-white" },
   cumplido: { texto: "Cumplido", color: "bg-green-100 text-green-700" },
 }
 
 // Estado de Siesa esperado para cada estado visible
 const SIESA_ESPERADO: Record<EstadoVisible, number> = {
-  por_separar: 2,
-  separado: 2,
-  comprometido: 3,
+  creado: 2,
+  separado: 3,
   cumplido: 4,
 }
 

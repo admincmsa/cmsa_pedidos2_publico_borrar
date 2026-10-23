@@ -66,7 +66,7 @@ export default function PedidoComercialDetalle() {
   const handleEliminarSerial = async (serialId: number, serialCodigo: string) => {
     if (!confirm(
         `¿Quitar el rollo ${serialCodigo} de este pedido? ` +
-        `Si el pedido estaba separado o comprometido, volverá a bodega para que lo ajusten.`
+        `Si el pedido ya estaba separado (comprometido), volverá a bodega para que lo ajusten.`
     )) return
 
     setEliminandoSerial(serialId)
@@ -78,7 +78,7 @@ export default function PedidoComercialDetalle() {
 
         await cargarPedido()
 
-    } catch (err: any) {
+    } catch (err) {
         console.error("Error eliminando serial:", err)
         setError(mensajeError(err, "Error al eliminar el rollo"))
     } finally {

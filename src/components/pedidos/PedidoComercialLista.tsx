@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import api, { mensajeError } from "../../services/api"
-import { PlusCircle, Truck, RefreshCw, Trash2, Lock, Eye, Link2, AlertTriangle } from "lucide-react"
-import { useAuth } from "../../context/AuthContext"
+import { PlusCircle, Truck, RefreshCw, Trash2, Eye, AlertTriangle } from "lucide-react"
 import { estadoPedido, alertaSiesa } from "../../utils/estadosPedido"
 
 interface PedidoResumen {
@@ -22,7 +21,6 @@ export default function PedidoComercialLista() {
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([])
   const [cargando, setCargando] = useState(false)
   const [remisionando, setRemisionando] = useState<number | null>(null)
-  const [comprometiendo, setComprometiendo] = useState<number | null>(null)
   const [eliminando, setEliminando] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -44,37 +42,7 @@ export default function PedidoComercialLista() {
     cargarPedidos()
   }, [])
 
-  const { usuario } = useAuth()
-
-  // Solo admin: registra en la base un compromiso que ya quedó en Siesa, sin reenviarlo
-  const handleRegistrarCompromiso = async (id: number) => {
-    if (!confirm("Esto NO envía nada a Siesa: registra en la app el compromiso que ya existe en Siesa para este pedido. ¿Continuar?")) return
-    setComprometiendo(id)
-    try {
-      const res = await api.post(`/pedido_registrar_compromiso/${id}`)
-      alert(res.data?.mensaje || "Compromiso registrado")
-      await cargarPedidos()
-    } catch (err: any) {
-      alert(mensajeError(err, "Error al registrar el compromiso"))
-    } finally {
-      setComprometiendo(null)
-    }
-  }
-
-  const handleComprometer = async (id: number) => {
-    if (!confirm("¿Confirmas comprometer en SIESA los rollos separados de este pedido? Dejarán de estar disponibles para otros clientes y ya no se podrán quitar del pedido.")) return
-
-    setComprometiendo(id)
-    try {
-      const res = await api.post(`/pedido_comprometer/${id}`)
-      alert(res.data?.mensaje || "Inventario comprometido en Siesa")
-      await cargarPedidos()
-    } catch (err: any) {
-      alert(mensajeError(err, "Error al comprometer el inventario"))
-    } finally {
-      setComprometiendo(null)
-    }
-  }
+  // No hay botón Comprometer: separar es comprometer, y lo hace bodega al terminar.
 
   const handleRemisionar = async (id: number) => {
     if (!confirm("¿Confirmas crear la remisión de este pedido en SIESA? El pedido quedará Cumplido.")) return
@@ -84,7 +52,7 @@ export default function PedidoComercialLista() {
       const res = await api.post(`/pedido_remisionar/${id}`)
       alert(res.data?.mensaje || "Pedido remisionado en Siesa")
       await cargarPedidos()
-    } catch (err: any) {
+    } catch (err) {
       alert(mensajeError(err, "Error al remisionar el pedido"))
     } finally {
       setRemisionando(null)
@@ -98,7 +66,7 @@ export default function PedidoComercialLista() {
     try {
       await api.put(`/pedido_eliminar/${id}`)
       await cargarPedidos()
-    } catch (err: any) {
+    } catch (err) {
       alert(mensajeError(err, "Error al eliminar el pedido"))
     } finally {
       setEliminando(null)
@@ -181,28 +149,6 @@ export default function PedidoComercialLista() {
                           className="p-1.5 rounded-lg text-red-600 hover:bg-red-100 disabled:opacity-50"
                         >
                           <Trash2 size={14} />
-                        </button>
-                      )}
-
-                      {p.estado === "separado" && (
-                        <button
-                          onClick={() => handleComprometer(p.id)}
-                          disabled={comprometiendo === p.id}
-                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-xs hover:bg-purple-700 disabled:opacity-50"
-                        >
-                          <Lock size={14} />
-                          {comprometiendo === p.id ? "Comprometiendo..." : "Comprometer"}
-                        </button>
-                      )}
-
-                      {p.estado === "separado" && usuario?.rol === "admin" && (
-                        <button
-                          title="Registrar compromiso de Siesa (sin reenviar)"
-                          onClick={() => handleRegistrarCompromiso(p.id)}
-                          disabled={comprometiendo === p.id}
-                          className="p-1.5 rounded-lg text-purple-700 hover:bg-purple-100 disabled:opacity-50"
-                        >
-                          <Link2 size={14} />
                         </button>
                       )}
 
