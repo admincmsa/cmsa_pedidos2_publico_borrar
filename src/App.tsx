@@ -321,7 +321,6 @@ import { AuthProvider, useAuth } from "./context/AuthContext"
 import ProtectedRoute from "./components/ProtectedRoute"
 import { Sidebar } from "./components/layout/Sidebar"
 import Login from "./pages/Login"
-import Dashboard from "./pages/Dashboard"
 import PedidoComercialLista from "./components/pedidos/PedidoComercialLista"
 import PedidoForm from "./components/pedidos/PedidoForm"
 import PedidoBodegaLista from "./components/pedidos/PedidoBodegaLista"
@@ -331,10 +330,11 @@ import InventarioPage from "./pages/InventarioPage"
 import UsuariosPage from "./pages/UsuariosPage"
 import CambiarClavePage from "./pages/CambiarClavePage"
 
+// Sin Dashboard: cada rol entra a su lista, que trae arriba la franja de estados.
 function Inicio() {
   const { usuario } = useAuth()
-  if (usuario?.rol === "bodega") return <Navigate to="/bodega" replace />
-  return <Navigate to="/dashboard" replace />
+  if (usuario?.rol === "comercial") return <Navigate to="/comercial" replace />
+  return <Navigate to="/bodega" replace />
 }
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -357,14 +357,7 @@ export default function App() {
 
           <Route path="/" element={<ProtectedRoute><Layout><Inicio /></Layout></ProtectedRoute>} />
 
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute rolesPermitidos={["admin", "comercial", "bodega"]}>
-                <Layout><Dashboard /></Layout>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/dashboard" element={<Navigate to="/" replace />} />
 
           <Route
             path="/comercial"

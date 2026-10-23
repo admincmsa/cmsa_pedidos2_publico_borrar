@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import api from "../../services/api"
-import { RefreshCw, User } from "lucide-react"
+import { User } from "lucide-react"
 import { kg } from "../../bodega/carrete"
 import { CMSA, ESTADO } from "../../theme/cmsa"
+import { useRefrescoAutomatico } from "../../utils/useRefrescoAutomatico"
+import BarraEstados from "./BarraEstados"
 
 /**
  * Pedidos por separar, para la tablet de bodega.
@@ -15,6 +17,9 @@ import { CMSA, ESTADO } from "../../theme/cmsa"
  * Los kilos y el avance los entrega el backend en `resumen_cobre`. Si el
  * servidor todavía no los manda (versión anterior), la tarjeta sigue sirviendo:
  * muestra el pedido sin la barra.
+ *
+ * Todos los pedidos de esta lista están por separar, así que no hay filtros. La
+ * lista se refresca sola (useRefrescoAutomatico), sin botón «Actualizar».
  */
 
 const AZUL = CMSA.azul
@@ -40,25 +45,14 @@ interface PedidoResumen {
   resumen_cobre?: ResumenCobre
 }
 
-type Filtro = "todos" | "curso" | "nuevos"
-
-const FILTROS: { id: Filtro; label: string }[] = [
-  { id: "todos", label: "Todos" },
-  { id: "curso", label: "En separación" },
-  { id: "nuevos", label: "Sin iniciar" },
-]
-
-function estadoDe(p: PedidoResumen): "Listo para terminar" | "En separación" | "Sin iniciar" {
+function estadoDe(p: PedidoResumen): "Listo para terminar" | "En separación" {
   const r = p.resumen_cobre
-  if (r && r.lineas > 0 && r.listas === r.lineas) return "Listo para terminar"
-  if (p.estado === "en_separacion" || (r?.kg_separados ?? 0) > 0) return "En separación"
-  return "Sin iniciar"
+  return r && r.lineas > 0 && r.listas === r.lineas ? "Listo para terminar" : "En separación"
 }
 
 const COLOR = {
   "Listo para terminar": { chip: "bg-emerald-100 text-emerald-800", barra: ESTADO.ok },
   "En separación": { chip: "bg-cmsa-amarillo text-cmsa-tinta", barra: AZUL },
-  "Sin iniciar": { chip: "bg-cmsa-niebla text-cmsa-gris", barra: AZUL },
 } as const
 
 export default function PedidoBodegaLista() {
@@ -66,12 +60,11 @@ export default function PedidoBodegaLista() {
   // Lo que dejó la pantalla de separación al terminar (pedido comprometido).
   const avisoSeparacion = (useLocation().state as { aviso?: string } | null)?.aviso
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([])
-  const [filtro, setFiltro] = useState<Filtro>("todos")
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const cargar = useCallback(async () => {
-    setCargando(true)
+  const cargar = useCallback(async (silencioso = false) => {
+    if (!silencioso) setCargando(true)
     setError(null)
     try {
       const [ingresados, enSeparacion] = await Promise.all([
@@ -89,16 +82,7 @@ export default function PedidoBodegaLista() {
   useEffect(() => {
     cargar()
   }, [cargar])
-
-  const visibles = useMemo(
-    () =>
-      pedidos.filter((p) => {
-        if (filtro === "todos") return true
-        const separado = p.resumen_cobre?.kg_separados ?? 0
-        return filtro === "curso" ? separado > 0 : separado === 0
-      }),
-    [pedidos, filtro],
-  )
+  useRefrescoAutomatico(cargar)
 
   const usuario = (() => {
     try {
@@ -119,39 +103,13 @@ export default function PedidoBodegaLista() {
           <div className="text-[15px] opacity-90">Solo alambre esmaltado de cobre</div>
         </div>
 
-        <div className="flex gap-2">
-          {FILTROS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFiltro(f.id)}
-              className="h-11 rounded-xl px-4 text-base font-semibold"
-              style={
-                filtro === f.id
-                  ? { background: "#FFFFFF", color: AZUL }
-                  : { background: "rgba(255,255,255,0.14)", color: "#FFFFFF" }
-              }
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        <button
-          onClick={cargar}
-          disabled={cargando}
-          aria-label="Actualizar la lista"
-          className="flex h-11 items-center gap-2 rounded-xl px-4 text-base font-semibold"
-          style={{ background: "rgba(255,255,255,0.14)" }}
-        >
-          <RefreshCw size={20} className={cargando ? "animate-spin" : ""} />
-          Actualizar
-        </button>
-
         <div className="flex items-center gap-2 text-base">
           <User size={22} />
           {usuario}
         </div>
       </header>
+
+      <BarraEstados />
 
       <div className="min-h-0 flex-1 overflow-auto px-6 py-5">
         {avisoSeparacion && (
@@ -167,7 +125,7 @@ export default function PedidoBodegaLista() {
         )}
 
         <div className="grid grid-cols-1 content-start gap-4 lg:grid-cols-2">
-          {visibles.map((p) => {
+          {pedidos.map((p) => {
             const r = p.resumen_cobre
             const estado = estadoDe(p)
             const color = COLOR[estado]
@@ -227,10 +185,8 @@ export default function PedidoBodegaLista() {
           })}
         </div>
 
-        {!cargando && visibles.length === 0 && (
-          <p className="py-16 text-center text-xl text-cmsa-gris">
-            {pedidos.length === 0 ? "No hay pedidos pendientes de separar." : "Ningún pedido en este filtro."}
-          </p>
+        {!cargando && pedidos.length === 0 && (
+          <p className="py-16 text-center text-xl text-cmsa-gris">No hay pedidos pendientes de separar.</p>
         )}
       </div>
     </div>

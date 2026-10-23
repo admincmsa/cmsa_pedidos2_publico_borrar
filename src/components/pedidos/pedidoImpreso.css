@@ -1,0 +1,75 @@
+/*
+ * Pedido de venta tal como sale impreso de Siesa (hoja A4, medidas en puntos).
+ * Copia de «Pedido de Venta CMSA.html»; todas las clases van con el prefijo
+ * pv- para no chocar con Tailwind.
+ */
+.pv-fondo { min-height: 100vh; background: #d9d9d9; color: #000; font: 8pt/1 Arial, Helvetica, sans-serif; padding: 24px 0; }
+.pv-fondo * { box-sizing: border-box; margin: 0; padding: 0; }
+
+.pv-barra { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; font: 14px/1.2 system-ui, sans-serif; }
+.pv-barra button { padding: 8px 16px; border-radius: 8px; border: 1px solid #9ca3af; background: #fff; cursor: pointer; }
+.pv-barra button.pv-principal { background: #1d1aa8; border-color: #1d1aa8; color: #fff; }
+
+.pv-hoja { position: relative; width: 210mm; height: 297mm; margin: 0 auto; background: #fff; overflow: hidden; }
+.pv-hoja > * { position: absolute; }
+
+@page { size: A4; margin: 0; }
+@media print {
+  .pv-fondo { background: none; padding: 0; }
+  .pv-barra { display: none; }
+}
+
+/* Encabezado */
+.pv-logo    { left: 29.7pt; top: 45.3pt; width: 101.5pt; }
+.pv-empresa { left: 149.8pt; top: 25pt; line-height: 14.4pt; }
+.pv-empresa h1 { font-size: 11pt; line-height: 12pt; font-weight: bold; }
+.pv-empresa .pv-tel { line-height: 12.9pt; }
+
+.pv-numero { left: 380.1pt; top: 23.6pt; width: 196pt; border: .5pt solid; text-align: center; font-weight: bold; }
+.pv-numero h2 { height: 19.24pt; padding-top: 1pt; background: #c0c0c0; border-bottom: .5pt solid; font-size: 12pt; }
+.pv-numero p  { height: 23.34pt; padding-top: .9pt; font-size: 14pt; }
+
+.pv-raya   { left: 22.1pt; top: 102.9pt; width: 347.7pt; border-top: 2pt solid; }
+.pv-titulo { left: 381pt; top: 95.8pt; font-size: 14pt; font-weight: bold; }
+
+/* Cajas redondeadas con rótulo */
+.pv-caja   { border: .6pt solid; border-radius: 3.6pt; }
+.pv-rotulo { position: absolute; height: 14.4pt; line-height: 14.4pt; background: #fff; text-align: center; font-size: 10pt; font-weight: bold; }
+
+.pv-cliente, .pv-datos { top: 127pt; height: 77.3pt; padding-top: 11.1pt !important; line-height: 14.4pt; }
+.pv-cliente { left: 21.1pt; width: 348.7pt; padding-left: 4.2pt !important; }
+.pv-datos   { left: 380pt; width: 197.6pt; padding-left: 3.1pt !important; }
+.pv-cliente .pv-rotulo { left: 39.8pt; top: -7.3pt; width: 48pt; }
+.pv-cliente b { display: inline-block; width: 45.9pt; }
+.pv-datos b   { display: inline-block; width: 76.4pt; }
+.pv-cliente p, .pv-datos p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Tabla de ítems */
+.pv-items { left: 21.2pt; top: 212.4pt; width: 554.9pt; border: .5pt solid; border-collapse: collapse; table-layout: fixed; }
+.pv-items th, .pv-items td { border-left: .5pt solid; vertical-align: top; text-align: center; }
+.pv-items th { height: 13.8pt; padding-top: .4pt !important; background: #c0c0c0; font-weight: bold; }
+.pv-items th.pv-chico { font-size: 7pt; padding-top: .2pt !important; }
+.pv-items td { height: 16.56pt; padding-top: 3.3pt !important; }
+.pv-items td.pv-um { padding-top: 1.15pt !important; }
+.pv-items .pv-izq { text-align: left; padding-left: 3.5pt !important; }
+.pv-items td.pv-desc { padding: 0 !important; text-align: left; }
+.pv-items td.pv-desc div { height: 16.56pt; overflow: hidden; padding: .47pt 0 0 4.1pt !important; line-height: 9.36pt; }
+.pv-items tr.pv-relleno td { height: auto; }
+
+/* Notas, totales y firmas */
+.pv-marco { left: 21.1pt; top: 614.5pt; width: 555pt; height: 152.4pt; border: .5pt solid; }
+.pv-marco > * { position: absolute; }
+.pv-notas   { left: 4.7pt; top: 7.8pt; width: 380.4pt; height: 82.3pt; padding: 8pt 4pt 0 !important; line-height: 10pt; white-space: pre-line; overflow: hidden; }
+.pv-notas .pv-rotulo { left: 21.2pt; top: -9pt; width: 54pt; }
+.pv-totales { left: 390.7pt; top: 7.8pt; width: 158.5pt; height: 82.3pt; padding-top: 7.8pt !important; }
+.pv-totales .pv-rotulo { left: 17.8pt; top: -5.3pt; width: 63pt; }
+.pv-totales p { display: flex; justify-content: space-between; padding: 0 3.4pt 0 4pt !important; line-height: 14.33pt; }
+.pv-totales p.pv-total { margin-top: 1.3pt; padding-right: 0 !important; border-top: .5pt solid; font-size: 10pt; font-weight: bold; line-height: 13pt; }
+
+.pv-firma { top: 132.7pt; width: 144.3pt; padding-left: 6pt !important; border-top: .5pt solid; text-align: center; font-size: 10pt; line-height: 12.35pt; }
+.pv-firma span { position: absolute; bottom: 100%; left: 6pt; right: 0; line-height: 17.6pt; }
+
+.pv-pie { left: 22.4pt; top: 768.1pt; width: 553.8pt; display: flex; }
+.pv-pie span { flex: 1; }
+.pv-pie span:nth-child(2) { text-align: center; }
+.pv-pie span:last-child  { text-align: right; }

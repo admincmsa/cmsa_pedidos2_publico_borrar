@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
-  BarChart3,
   FileSpreadsheet,
   Warehouse,
   Boxes,
@@ -40,12 +39,6 @@ const MENU: MenuItem[] = [
     name: "Inventario",
     path: "/inventario",
     icon: Boxes,
-    roles: ["admin", "comercial", "bodega"],
-  },
-  {
-    name: "Dashboard",
-    path: "/dashboard",
-    icon: BarChart3,
     roles: ["admin", "comercial", "bodega"],
   },
   {
