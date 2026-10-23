@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import api from "../../services/api"
 import { RefreshCw, User } from "lucide-react"
 import { kg } from "../../bodega/carrete"
@@ -63,6 +63,8 @@ const COLOR = {
 
 export default function PedidoBodegaLista() {
   const navigate = useNavigate()
+  // Lo que dejó la pantalla de separación al terminar (pedido comprometido).
+  const avisoSeparacion = (useLocation().state as { aviso?: string } | null)?.aviso
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([])
   const [filtro, setFiltro] = useState<Filtro>("todos")
   const [cargando, setCargando] = useState(false)
@@ -152,6 +154,12 @@ export default function PedidoBodegaLista() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto px-6 py-5">
+        {avisoSeparacion && (
+          <div className="mb-4 rounded-xl px-4 py-3.5 text-lg font-semibold" style={{ background: ESTADO.okFondo, color: ESTADO.okTexto }}>
+            {avisoSeparacion}
+          </div>
+        )}
+
         {error && (
           <div className="mb-4 rounded-xl px-4 py-3.5 text-lg" style={{ background: ESTADO.errorFondo, color: ESTADO.errorTexto }}>
             {error}

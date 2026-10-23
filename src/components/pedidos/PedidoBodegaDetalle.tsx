@@ -328,12 +328,18 @@ export default function PedidoBodegaDetalle() {
     setConfirmarFin(false)
     setFinalizando(true)
     try {
-      await api.put(`/pedido_finalizar_separacion/${pedidoId}`)
-      navigate("/bodega")
+      // Terminar es comprometer en Siesa: la respuesta llega cuando Siesa ya reservó los carretes.
+      const res = await api.put(`/pedido_finalizar_separacion/${pedidoId}`)
+      const mensaje = res.data?.simulacion
+        ? `Pedido ${pedido?.f430_consec_docto} separado. Simulación: no se comprometió en Siesa.`
+        : `Pedido ${pedido?.f430_consec_docto} separado y comprometido en Siesa.`
+      navigate("/bodega", { state: { aviso: mensaje } })
     } catch (err) {
+      // Siesa no comprometió: el pedido sigue en bodega para cambiar el carrete que falló.
+      await cargarPedido()
       setAviso({
         tipo: "error",
-        titulo: "No se pudo terminar la separación",
+        titulo: "Siesa no comprometió el pedido",
         detalle: mensajeError(err, "Intente otra vez."),
       })
     } finally {
@@ -556,7 +562,7 @@ export default function PedidoBodegaDetalle() {
           style={faltan > 0 ? { background: CMSA.borde, color: CMSA.tinta } : { background: ESTADO.ok, color: "#FFFFFF" }}
         >
           {finalizando
-            ? "Terminando…"
+            ? "Comprometiendo en Siesa…"
             : faltan > 0
               ? `Terminar · faltan ${faltan} ${faltan === 1 ? "calibre" : "calibres"}`
               : "Terminar separación"}
@@ -599,7 +605,7 @@ export default function PedidoBodegaDetalle() {
       {confirmarFin && (
         <Dialogo
           titulo={`Faltan ${faltan} ${faltan === 1 ? "calibre" : "calibres"} por completar`}
-          detalle="El pedido pasa a comercial con lo que se logró separar. ¿Terminar de todas formas?"
+          detalle="Se compromete en Siesa lo que se logró separar y el pedido queda listo para remisionar. ¿Terminar de todas formas?"
           confirmar="Terminar así"
           onConfirmar={finalizar}
           onCancelar={() => {
