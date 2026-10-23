@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import api, { mensajeError } from "../../services/api"
-import { PlusCircle, Truck, RefreshCw, Trash2, Eye, AlertTriangle } from "lucide-react"
+import { PlusCircle, Truck, RefreshCw, Trash2, Eye, AlertTriangle, Lock } from "lucide-react"
 import { estadoPedido, alertaSiesa } from "../../utils/estadosPedido"
 
 interface PedidoResumen {
@@ -21,6 +21,7 @@ export default function PedidoComercialLista() {
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([])
   const [cargando, setCargando] = useState(false)
   const [remisionando, setRemisionando] = useState<number | null>(null)
+  const [comprometiendo, setComprometiendo] = useState<number | null>(null)
   const [eliminando, setEliminando] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,7 +43,24 @@ export default function PedidoComercialLista() {
     cargarPedidos()
   }, [])
 
-  // No hay botón Comprometer: separar es comprometer, y lo hace bodega al terminar.
+  // Comercial vuelve a comprometer con lo separado. Si en Siesa no hay compromiso,
+  // la app compromete los carretes exactos; si comercial ya comprometió al crear el
+  // pedido, la app verifica que coincida con lo separado (si no, dice qué ajustar
+  // en Siesa escritorio: por API no se puede bajar un compromiso).
+  const handleComprometer = async (id: number) => {
+    if (!confirm("¿Comprometer en Siesa lo separado en bodega? Si el pedido ya está comprometido en Siesa, se verifica que coincida con lo separado.")) return
+
+    setComprometiendo(id)
+    try {
+      const res = await api.post(`/pedido_comprometer/${id}`)
+      alert(res.data?.mensaje || "Pedido comprometido con lo separado")
+      await cargarPedidos()
+    } catch (err) {
+      alert(mensajeError(err, "Error al comprometer el pedido"))
+    } finally {
+      setComprometiendo(null)
+    }
+  }
 
   const handleRemisionar = async (id: number) => {
     if (!confirm("¿Confirmas crear la remisión de este pedido en SIESA? El pedido quedará Cumplido.")) return
@@ -149,6 +167,17 @@ export default function PedidoComercialLista() {
                           className="p-1.5 rounded-lg text-red-600 hover:bg-red-100 disabled:opacity-50"
                         >
                           <Trash2 size={14} />
+                        </button>
+                      )}
+
+                      {p.estado === "separado" && (
+                        <button
+                          onClick={() => handleComprometer(p.id)}
+                          disabled={comprometiendo === p.id}
+                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-cmsa-azul text-white text-xs hover:bg-cmsa-azul-profundo disabled:opacity-50"
+                        >
+                          <Lock size={14} />
+                          {comprometiendo === p.id ? "Comprometiendo..." : "Comprometer"}
                         </button>
                       )}
 

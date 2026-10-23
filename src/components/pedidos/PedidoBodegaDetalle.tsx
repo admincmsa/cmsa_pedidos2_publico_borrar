@@ -366,18 +366,13 @@ export default function PedidoBodegaDetalle() {
     setConfirmarFin(false)
     setFinalizando(true)
     try {
-      // Terminar es comprometer en Siesa: la respuesta llega cuando Siesa ya reservó los carretes.
-      const res = await api.put(`/pedido_finalizar_separacion/${pedidoId}`)
-      const mensaje = res.data?.simulacion
-        ? `Pedido ${pedido?.f430_consec_docto} separado. Simulación: no se comprometió en Siesa.`
-        : `Pedido ${pedido?.f430_consec_docto} separado y comprometido en Siesa.`
-      navigate("/bodega", { state: { aviso: mensaje } })
+      // Bodega termina; comercial compromete en Siesa lo separado.
+      await api.put(`/pedido_finalizar_separacion/${pedidoId}`)
+      navigate("/bodega", { state: { aviso: `Pedido ${pedido?.f430_consec_docto} separado.` } })
     } catch (err) {
-      // Siesa no comprometió: el pedido sigue en bodega para cambiar el carrete que falló.
-      await cargarPedido()
       setAviso({
         tipo: "error",
-        titulo: "Siesa no comprometió el pedido",
+        titulo: "No se pudo terminar la separación",
         detalle: mensajeError(err, "Intente otra vez."),
       })
     } finally {
@@ -604,7 +599,7 @@ export default function PedidoBodegaDetalle() {
           style={faltan > 0 ? { background: CMSA.borde, color: CMSA.tinta } : { background: ESTADO.ok, color: "#FFFFFF" }}
         >
           {finalizando
-            ? "Comprometiendo en Siesa…"
+            ? "Terminando…"
             : faltan > 0
               ? `Terminar · faltan ${faltan} ${faltan === 1 ? "calibre" : "calibres"}`
               : "Terminar separación"}
@@ -647,7 +642,7 @@ export default function PedidoBodegaDetalle() {
       {confirmarFin && (
         <Dialogo
           titulo={`Faltan ${faltan} ${faltan === 1 ? "calibre" : "calibres"} por completar`}
-          detalle="Se compromete en Siesa lo que se logró separar y el cliente aprueba la diferencia antes de la remisión. ¿Terminar de todas formas?"
+          detalle="El pedido pasa a comercial con lo que se logró separar; el cliente aprueba la diferencia antes de la remisión. ¿Terminar de todas formas?"
           confirmar="Terminar así"
           onConfirmar={finalizar}
           onCancelar={() => {

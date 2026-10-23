@@ -2,15 +2,14 @@
 // ESTADOS VISIBLES DEL PEDIDO
 //
 // La base guarda el estado interno de la app (pedidos.estado); aquí se
-// traduce a los tres estados que ve el usuario. Separar es comprometer el
-// inventario en Siesa: un pedido separado es un pedido comprometido.
+// traduce a los tres estados que ve el usuario. Flujo: comercial crea el pedido
+// y lo compromete en Siesa por lo pedido; bodega separa; comercial vuelve a
+// comprometer con lo separado (botón Comprometer) y remisiona.
 //
-//   ingresado / en_separacion -> Creado                    (Siesa 2)
-//   comprometido              -> Separado (comprometido)   (Siesa 3)
-//   remisionado               -> Cumplido                  (Siesa 4)
-//
-// El interno "separado" solo dura mientras Siesa compromete, o quedó de antes
-// del cambio: sigue Creado y bodega lo termina comprometiéndolo.
+//   ingresado / en_separacion -> Creado     (Siesa 2, o 3 si comercial ya comprometió)
+//   separado                  -> Separado   bodega terminó; falta comprometer lo separado
+//   comprometido              -> Separado   comprometido con lo separado; listo para remisionar
+//   remisionado               -> Cumplido   (Siesa 4)
 // ==========================================================
 
 export type EstadoVisible = "creado" | "separado" | "cumplido"
@@ -18,7 +17,7 @@ export type EstadoVisible = "creado" | "separado" | "cumplido"
 export const ESTADO_VISIBLE: Record<string, EstadoVisible> = {
   ingresado: "creado",
   en_separacion: "creado",
-  separado: "creado",
+  separado: "separado",
   comprometido: "separado",
   remisionado: "cumplido",
 }
@@ -29,11 +28,11 @@ export const ESTADOS: Record<EstadoVisible, { texto: string; color: string }> = 
   cumplido: { texto: "Cumplido", color: "bg-green-100 text-green-700" },
 }
 
-// Estado de Siesa esperado para cada estado visible
-const SIESA_ESPERADO: Record<EstadoVisible, number> = {
-  creado: 2,
-  separado: 3,
-  cumplido: 4,
+// Estados de Siesa esperados para cada estado visible (comercial compromete al crear)
+const SIESA_ESPERADO: Record<EstadoVisible, number[]> = {
+  creado: [2, 3],
+  separado: [2, 3],
+  cumplido: [4],
 }
 
 const NOMBRE_SIESA: Record<number, string> = {
@@ -51,6 +50,6 @@ export function estadoPedido(estadoInterno: string) {
 export function alertaSiesa(estadoInterno: string, estadoSiesa: number | null | undefined): string | null {
   const visible = ESTADO_VISIBLE[estadoInterno]
   if (!visible || estadoSiesa === null || estadoSiesa === undefined) return null
-  if (estadoSiesa === SIESA_ESPERADO[visible]) return null
+  if (SIESA_ESPERADO[visible].includes(estadoSiesa)) return null
   return `En Siesa: ${NOMBRE_SIESA[estadoSiesa] ?? estadoSiesa}`
 }

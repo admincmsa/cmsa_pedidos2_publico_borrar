@@ -60,8 +60,8 @@ export default function Dashboard() {
   // Conteo por estado visible (backend v1.5.0); con un backend anterior se calcula aquí
   const c = resumen.conteo_estados
   const conteo = resumen.conteo_visible?.creado !== undefined ? resumen.conteo_visible : {
-    creado: (c.ingresado ?? 0) + (c.en_separacion ?? 0) + (c.separado ?? 0),
-    separado: c.comprometido ?? 0,
+    creado: (c.ingresado ?? 0) + (c.en_separacion ?? 0),
+    separado: (c.separado ?? 0) + (c.comprometido ?? 0),
     cumplido: c.remisionado ?? 0,
   }
 

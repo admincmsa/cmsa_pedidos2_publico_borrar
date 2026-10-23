@@ -51,7 +51,7 @@ const FILTROS: { id: Filtro; label: string }[] = [
 function estadoDe(p: PedidoResumen): "Listo para terminar" | "En separación" | "Sin iniciar" {
   const r = p.resumen_cobre
   if (r && r.lineas > 0 && r.listas === r.lineas) return "Listo para terminar"
-  if (p.estado === "en_separacion" || p.estado === "separado" || (r?.kg_separados ?? 0) > 0) return "En separación"
+  if (p.estado === "en_separacion" || (r?.kg_separados ?? 0) > 0) return "En separación"
   return "Sin iniciar"
 }
 
@@ -74,14 +74,11 @@ export default function PedidoBodegaLista() {
     setCargando(true)
     setError(null)
     try {
-      // "separado": quedó así antes de que terminar fuera comprometer; bodega lo
-      // termina de nuevo y queda comprometido en Siesa.
-      const [ingresados, enSeparacion, separados] = await Promise.all([
+      const [ingresados, enSeparacion] = await Promise.all([
         api.get("/pedidos_listar", { params: { estado: "ingresado" } }),
         api.get("/pedidos_listar", { params: { estado: "en_separacion" } }),
-        api.get("/pedidos_listar", { params: { estado: "separado" } }),
       ])
-      setPedidos([...separados.data, ...enSeparacion.data, ...ingresados.data])
+      setPedidos([...enSeparacion.data, ...ingresados.data])
     } catch {
       setError("No se pudieron cargar los pedidos. Revise la conexión y vuelva a intentar.")
     } finally {
