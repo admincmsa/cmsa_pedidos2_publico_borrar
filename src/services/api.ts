@@ -57,11 +57,14 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Si el token expira o es inválido, cierra sesión y manda a login
+// Si el token expira o es inválido, cierra sesión y manda a login.
+// El 401 de /login es una clave equivocada, no una sesión vencida: si también
+// recargara la página, el formulario perdería el mensaje de error.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error?.response?.status === 401) {
+    const esIngreso = String(error?.config?.url ?? "").endsWith("/login")
+    if (error?.response?.status === 401 && !esIngreso) {
       localStorage.removeItem("token")
       localStorage.removeItem("usuario")
       window.location.href = "/login"

@@ -5,7 +5,21 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}"
   ],
   theme: {
-    extend: {},
+    extend: {
+      // Sistema de diseño CMSA v1; los mismos valores en src/theme/cmsa.ts.
+      colors: {
+        cmsa: {
+          azul: "#1A0DBC",
+          "azul-profundo": "#0E0776",
+          amarillo: "#F2DE3D",
+          tinta: "#171A3D",
+          gris: "#5C607E",
+          niebla: "#EFF1FA",
+          borde: "#D6DAF0",
+          "sobre-azul": "#AEB2E0",
+        },
+      },
+    },
   },
   plugins: [],
 }

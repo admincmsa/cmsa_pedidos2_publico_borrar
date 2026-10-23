@@ -1,7 +1,9 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import logoCmsa from "../logo-cmsa.png"
+import { mensajeError } from "../services/api"
+import logo_cmsa from "../logo-cmsa.png"
+import logo_isashi from "../Logo-Isashii2-1.png"
 
 export default function Login() {
 
@@ -21,39 +23,33 @@ export default function Login() {
     try {
       await login(username, password)
       navigate("/")
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.error || "Usuario o contraseña incorrectos"
-      )
+    } catch (err) {
+      setError(mensajeError(err, "Usuario o contraseña incorrectos"))
     } finally {
       setCargando(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-cmsa-niebla">
       <form
         onSubmit={handleSubmit}
         className="bg-white p-8 rounded-2xl shadow-md w-full max-w-sm space-y-4"
       >
         <div className="flex flex-col items-center mb-2">
-          <img
-            src={logoCmsa}
-            alt="Logo CMSA"
-            className="h-16 w-auto object-contain mb-4"
-          />
-          <h1 className="text-xl font-semibold text-gray-800">
+          <img src={logo_cmsa} alt="CMSA" className="h-14 object-contain mb-3" />
+          <h1 className="text-xl font-semibold text-cmsa-tinta">
             Gestión de Pedidos
           </h1>
-          <p className="text-sm text-gray-500">Inicia sesión para continuar</p>
+          <p className="text-sm text-cmsa-gris">Inicia sesión para continuar</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-cmsa-tinta mb-1">
             Usuario
           </label>
           <input
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-cmsa-borde rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cmsa-azul"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoFocus
@@ -61,12 +57,12 @@ export default function Login() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-cmsa-tinta mb-1">
             Contraseña
           </label>
           <input
             type="password"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-cmsa-borde rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cmsa-azul"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -77,11 +73,23 @@ export default function Login() {
         <button
           type="submit"
           disabled={cargando}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="w-full bg-cmsa-azul text-white py-2 rounded-lg hover:bg-cmsa-azul-profundo disabled:opacity-50"
         >
           {cargando ? "Ingresando..." : "Ingresar"}
         </button>
       </form>
+
+      {/* Firma del desarrollador. El PNG trae fondo blanco: multiply lo funde con el fondo. */}
+      <div className="flex flex-col items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cmsa-gris">
+          Powered by
+        </span>
+        <img
+          src={logo_isashi}
+          alt="IsashiIA"
+          className="h-14 object-contain mix-blend-multiply"
+        />
+      </div>
     </div>
   )
 }

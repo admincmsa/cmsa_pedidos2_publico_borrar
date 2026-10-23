@@ -10,15 +10,16 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  type LucideIcon,
 } from "lucide-react"
 import { useAuth } from "../../context/AuthContext"
 import logo_cliente from "../../logo-cmsa.png"
-import logo_tecnoinc from "../../Logo-Isashii2-1.png"
+import { CMSA } from "../../theme/cmsa"
 
 interface MenuItem {
   name: string
   path: string
-  icon: any
+  icon: LucideIcon
   roles: string[]
 }
 
@@ -94,7 +95,7 @@ export function Sidebar() {
     >
 
       {/* LOGO */}
-      <div className="bg-white flex justify-center items-center p-3 border-b relative min-h-[56px]">
+      <div className="bg-white flex justify-center items-center p-3 border-b border-cmsa-borde relative min-h-[56px]">
         {!colapsado && (
           <img
             src={logo_cliente}
@@ -112,10 +113,10 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* MENU + USUARIO (ocupa todo el espacio disponible) */}
+      {/* MENU + USUARIO: el azul llega hasta abajo */}
       <div
         className="flex-1 flex flex-col p-2 min-h-0"
-        style={{ backgroundColor: "#1800B1" }}
+        style={{ backgroundColor: CMSA.azulProfundo }}
       >
         <nav className="flex flex-col gap-1">
           {menuVisible.map((item) => {
@@ -129,10 +130,11 @@ export function Sidebar() {
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-white text-sm xl:text-base font-medium transition-all duration-200
                   ${colapsado ? "justify-center" : ""}
                   ${active
-                    ? "bg-white/30 font-semibold"
-                    : "hover:bg-white/20"
+                    ? "font-semibold"
+                    : "hover:bg-white/10"
                   }
                 `}
+                style={active ? { backgroundColor: CMSA.azul, boxShadow: `inset 4px 0 0 ${CMSA.amarillo}` } : undefined}
               >
                 <Icon size={18} className="shrink-0" />
                 {!colapsado && item.name}
@@ -150,7 +152,7 @@ export function Sidebar() {
           {!colapsado && (
             <div className="px-3 py-1.5 text-white/90">
               <p className="text-xs xl:text-sm font-semibold truncate">{usuario.nombre}</p>
-              <p className="text-xs text-white/60">{ROL_TEXTO[usuario.rol] || usuario.rol}</p>
+              <p className="text-xs text-cmsa-sobre-azul">{ROL_TEXTO[usuario.rol] || usuario.rol}</p>
             </div>
           )}
 
@@ -159,7 +161,7 @@ export function Sidebar() {
             title={colapsado ? "Cambiar contraseña" : undefined}
             className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-white text-xs xl:text-sm font-medium w-full transition-all duration-200
               ${colapsado ? "justify-center" : ""}
-              ${location.pathname.startsWith("/cambiar-clave") ? "bg-white/30" : "hover:bg-white/20"}
+              ${location.pathname.startsWith("/cambiar-clave") ? "bg-white/15" : "hover:bg-white/10"}
             `}
           >
             <KeyRound size={16} className="shrink-0" />
@@ -169,7 +171,7 @@ export function Sidebar() {
           <button
             onClick={handleLogout}
             title={colapsado ? "Salir" : undefined}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-white text-xs xl:text-sm font-medium w-full hover:bg-white/20 transition-all duration-200
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-white text-xs xl:text-sm font-medium w-full hover:bg-white/10 transition-all duration-200
               ${colapsado ? "justify-center" : ""}
             `}
           >
@@ -177,20 +179,6 @@ export function Sidebar() {
             {!colapsado && "Salir"}
           </button>
         </div>
-      </div>
-
-      {/* PIE */}
-      <div className="bg-white border-t flex justify-center items-center gap-2 py-1">
-        {!colapsado && (
-          <span className="text-[10px] xl:text-xs text-gray-400 whitespace-nowrap">
-            Powered by:
-          </span>
-        )}
-        <img
-          src={logo_tecnoinc}
-          alt="Logo"
-          className={colapsado ? "h-5 object-contain" : "h-8 xl:h-10 object-contain"}
-        />
       </div>
 
     </div>
