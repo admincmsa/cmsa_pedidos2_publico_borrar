@@ -8,8 +8,8 @@ import {
   Users,
   KeyRound,
   LogOut,
-  ChevronLeft,
-  ChevronRight,
+  Menu,
+  X,
   type LucideIcon,
 } from "lucide-react"
 import { useAuth } from "../../context/AuthContext"
@@ -94,24 +94,34 @@ export function Sidebar() {
       }`}
     >
 
-      {/* LOGO */}
-      <div className="bg-white flex justify-center items-center p-3 border-b border-cmsa-borde relative min-h-[56px]">
-        {!colapsado && (
+      {/* LOGO + ABRIR/CERRAR: cerrado queda la hamburguesa, del tamaño de un dedo en la tablet */}
+      {colapsado ? (
+        <button
+          onClick={toggleColapsado}
+          aria-label="Abrir menú"
+          title="Abrir menú"
+          className="flex min-h-[56px] items-center justify-center border-b border-white/15 text-white hover:bg-white/10"
+          style={{ backgroundColor: CMSA.azulProfundo }}
+        >
+          <Menu size={28} />
+        </button>
+      ) : (
+        <div className="bg-white flex items-center gap-2 p-3 border-b border-cmsa-borde min-h-[56px]">
           <img
             src={logo_cliente}
             alt="Logo"
-            className="h-10 xl:h-12 object-contain"
+            className="h-10 xl:h-12 min-w-0 flex-1 object-contain"
           />
-        )}
-
-        <button
-          onClick={toggleColapsado}
-          title={colapsado ? "Expandir menú" : "Contraer menú"}
-          className="absolute -right-3 top-1/2 -translate-y-1/2 bg-white border border-gray-200 rounded-full p-1 shadow hover:bg-gray-50 text-gray-500"
-        >
-          {colapsado ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
-      </div>
+          <button
+            onClick={toggleColapsado}
+            aria-label="Cerrar menú"
+            title="Cerrar menú"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-cmsa-gris hover:bg-cmsa-niebla"
+          >
+            <X size={22} />
+          </button>
+        </div>
+      )}
 
       {/* MENU + USUARIO: el azul llega hasta abajo */}
       <div
