@@ -43,12 +43,11 @@ export default function PedidoComercialLista() {
     cargarPedidos()
   }, [])
 
-  // Comercial vuelve a comprometer con lo separado. Si en Siesa no hay compromiso,
-  // la app compromete los carretes exactos; si comercial ya comprometió al crear el
-  // pedido, la app verifica que coincida con lo separado (si no, dice qué ajustar
-  // en Siesa escritorio: por API no se puede bajar un compromiso).
+  // Comercial vuelve a comprometer con lo separado: la app deja en Siesa los carretes
+  // exactos y libera lo que comercial había comprometido de más (el 131512 reemplaza
+  // la cantidad de cada lote; 0 lo libera).
   const handleComprometer = async (id: number) => {
-    if (!confirm("¿Comprometer en Siesa lo separado en bodega? Si el pedido ya está comprometido en Siesa, se verifica que coincida con lo separado.")) return
+    if (!confirm("¿Comprometer en Siesa lo separado en bodega? Si el pedido ya está comprometido, el compromiso se cambia por lo separado.")) return
 
     setComprometiendo(id)
     try {
