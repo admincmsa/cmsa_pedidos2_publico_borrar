@@ -185,25 +185,23 @@ export function leerCodigo(texto: string): ResultadoLectura {
 
 /*
  * Despacho aproximado: se busca quedar lo más cerca posible de lo pedido, por
- * arriba o por abajo. Un carrete entra si deja la línea más cerca y no pasa el
- * tope de exceso que acepta Siesa (porcentaje de exceso de venta del cliente);
- * por encima de ese tope Siesa rechaza el compromiso entero.
+ * arriba o por abajo. Un carrete entra si deja la línea más cerca y no pasa lo
+ * pedido más el exceso de la línea. Ese exceso depende del tipo de carrete:
+ * medio carrete del ítem (22,5 kg en los de 40-45 kg, 10 en los de 18-20, 6 en
+ * los de 10-12), o 0 mientras Siesa no acepte exceso. Lo calcula el backend
+ * (exceso_max_kg) con la misma regla.
  */
 
-export function topeExceso(pedido: number, toleranciaPct: number): number {
-  return pedido * (1 + toleranciaPct / 100)
-}
-
-/** "acerca": el carrete entra · "aleja": queda más lejos de lo pedido · "pasa_tope": Siesa lo rechazaría. */
+/** "acerca": el carrete entra · "aleja": queda más lejos de lo pedido · "pasa_tope": se pasa más de lo aceptado. */
 export type Encaje = "acerca" | "aleja" | "pasa_tope"
 
-export function encaje(pedido: number, separado: number, kilos: number, toleranciaPct: number): Encaje {
+export function encaje(pedido: number, separado: number, kilos: number, excesoKg: number): Encaje {
   const nuevo = separado + kilos
-  if (nuevo > topeExceso(pedido, toleranciaPct) + 0.005) return "pasa_tope"
+  if (nuevo > pedido + excesoKg + 0.005) return "pasa_tope"
   return Math.abs(pedido - nuevo) < Math.abs(pedido - separado) - 0.005 ? "acerca" : "aleja"
 }
 
 /** La línea está lista cuando ni el carrete más liviano de su calibre la acercaría más a lo pedido. */
-export function lineaLista(pedido: number, separado: number, minCarrete: number, toleranciaPct: number): boolean {
-  return encaje(pedido, separado, minCarrete, toleranciaPct) !== "acerca"
+export function lineaLista(pedido: number, separado: number, minCarrete: number, excesoKg: number): boolean {
+  return encaje(pedido, separado, minCarrete, excesoKg) !== "acerca"
 }

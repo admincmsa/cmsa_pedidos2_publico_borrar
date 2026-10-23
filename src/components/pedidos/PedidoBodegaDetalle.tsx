@@ -4,7 +4,7 @@ import axios from "axios"
 import api, { mensajeError } from "../../services/api"
 import { ChevronLeft, ScanLine, Trash2, User } from "lucide-react"
 import {
-  awgDeItem, encaje, esCobre, esLecturaCompleta, kg, leerCodigo, lineaLista, rangoCarrete, topeExceso,
+  awgDeItem, encaje, esCobre, esLecturaCompleta, kg, leerCodigo, lineaLista, rangoCarrete,
 } from "../../bodega/carrete"
 import { CMSA, ESTADO } from "../../theme/cmsa"
 
@@ -43,6 +43,8 @@ interface LineaDetalle {
   peso_acumulado: number
   /** Carrete más liviano que queda por separar de ese ítem; null si no hay ninguno. */
   peso_min_disponible?: number | null
+  /** Lo más que la línea puede pasar de lo pedido: medio carrete del ítem, o 0 si Siesa no acepta exceso. */
+  exceso_max_kg?: number
   seriales: Serial[]
 }
 
@@ -56,8 +58,6 @@ interface PedidoDetalle {
   ciudad_envio: string | null
   depto_envio: string | null
   detalle: LineaDetalle[]
-  /** Lo que Siesa acepta de más sobre lo pedido, en % (INV_TOLERANCIA_EXCESO del backend). */
-  tolerancia_exceso_pct?: number
 }
 
 type Aviso = { tipo: "ok" | "error"; titulo: string; detalle: string }
@@ -87,19 +87,22 @@ interface LineaCalculada extends LineaDetalle {
   pedido: number
   separado: number
   falta: number
-  /** Lo separado por encima de lo pedido (el despacho puede pasarse unos kilos). */
+  /** Lo separado por encima de lo pedido (el despacho puede pasarse hasta medio carrete). */
   sobra: number
+  /** Lo más que la línea puede pasar de lo pedido. */
+  excesoKg: number
   /** Carrete más liviano que se puede agregar: el real del inventario, o el nominal de la descripción. */
   minCarrete: number
   estado: "Pendiente" | "Separando" | "Lista"
   pct: number
 }
 
-function calcular(linea: LineaDetalle, toleranciaPct: number): LineaCalculada {
+function calcular(linea: LineaDetalle): LineaCalculada {
   const pedido = Number(linea.f431_cant_pedida_base || 0)
   const separado = Number(linea.peso_acumulado || 0)
   const falta = Math.max(pedido - separado, 0)
   const sobra = Math.max(separado - pedido, 0)
+  const excesoKg = Number(linea.exceso_max_kg ?? 0)
   // El rango de la descripción es nominal: manda el carrete real más liviano que queda.
   // null = no queda ninguno, así que ningún carrete puede acercar la línea.
   const min = linea.peso_min_disponible === null
@@ -108,7 +111,7 @@ function calcular(linea: LineaDetalle, toleranciaPct: number): LineaCalculada {
   // Lista: ni el carrete más liviano la dejaría más cerca de lo pedido.
   const estado = linea.seriales.length === 0
     ? "Pendiente"
-    : lineaLista(pedido, separado, min, toleranciaPct) ? "Lista" : "Separando"
+    : lineaLista(pedido, separado, min, excesoKg) ? "Lista" : "Separando"
   return {
     ...linea,
     awg: awgDeItem(linea.f120_id) ?? 0,
@@ -116,6 +119,7 @@ function calcular(linea: LineaDetalle, toleranciaPct: number): LineaCalculada {
     separado,
     falta,
     sobra,
+    excesoKg,
     minCarrete: min,
     estado,
     pct: pedido > 0 ? Math.min(100, (separado / pedido) * 100) : 0,
@@ -165,10 +169,9 @@ export default function PedidoBodegaDetalle() {
   }, [cargarPedido])
 
   // Líneas de cobre: son las únicas que se separan con la pistola.
-  const tolerancia = Number(pedido?.tolerancia_exceso_pct ?? 0)
   const lineas = useMemo<LineaCalculada[]>(
-    () => (pedido?.detalle ?? []).filter((d) => esCobre(d.f120_id)).map((d) => calcular(d, tolerancia)),
-    [pedido, tolerancia],
+    () => (pedido?.detalle ?? []).filter((d) => esCobre(d.f120_id)).map(calcular),
+    [pedido],
   )
   const otras = (pedido?.detalle ?? []).length - lineas.length
 
@@ -240,15 +243,15 @@ export default function PedidoBodegaDetalle() {
     }
 
     // Lo más cerca posible de lo pedido, por arriba o por abajo, sin pasar el
-    // tope de exceso: por encima de él Siesa rechaza el compromiso entero.
+    // exceso de la línea (medio carrete, o nada si Siesa no acepta exceso).
     if (kilos !== null) {
       const nuevo = destino.separado + kilos
-      const resultado = encaje(destino.pedido, destino.separado, kilos, tolerancia)
+      const resultado = encaje(destino.pedido, destino.separado, kilos, destino.excesoKg)
       if (resultado === "pasa_tope") {
         return fallar(
-          "No cabe: Siesa no acepta tanto exceso",
-          `Con este carrete (${kg(kilos)} kg) el AWG ${destino.awg} quedaría en ${kg(nuevo)} kg; ` +
-            `Siesa acepta hasta ${kg(topeExceso(destino.pedido, tolerancia))} kg. Déjelo en su lugar.`,
+          "No cabe: se pasaría de lo pedido",
+          `Con este carrete (${kg(kilos)} kg) el AWG ${destino.awg} quedaría en ${kg(nuevo)} de ` +
+            `${kg(destino.pedido)} kg; se acepta hasta ${kg(destino.excesoKg)} kg de más. Déjelo en su lugar.`,
           destino.id,
         )
       }
@@ -282,7 +285,7 @@ export default function PedidoBodegaDetalle() {
       })
       const fresco = await cargarPedido()
       const linea = fresco?.detalle.find((d) => d.id === destino.id)
-      const r = linea ? calcular(linea, tolerancia) : null
+      const r = linea ? calcular(linea) : null
       const peso = kilos ?? (r ? r.separado - destino.separado : 0)
       const avance = !r
         ? ""
