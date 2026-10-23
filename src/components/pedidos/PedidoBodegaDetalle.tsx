@@ -4,7 +4,7 @@ import axios from "axios"
 import api, { mensajeError } from "../../services/api"
 import { ChevronLeft, ScanLine, Trash2, User } from "lucide-react"
 import {
-  awgDeItem, encaje, esCobre, esLecturaCompleta, kg, leerCodigo, lineaLista, rangoCarrete,
+  awgDeItem, esCobre, esLecturaCompleta, kg, leerCodigo, lineaLista, rangoCarrete,
 } from "../../bodega/carrete"
 import { CMSA, ESTADO } from "../../theme/cmsa"
 
@@ -41,9 +41,10 @@ interface LineaDetalle {
   f431_cant_pedida_base: number
   estado_linea: string
   peso_acumulado: number
+  f431_precio_unitario_base?: number | null
   /** Carrete más liviano que queda por separar de ese ítem; null si no hay ninguno. */
   peso_min_disponible?: number | null
-  /** Lo más que la línea puede pasar de lo pedido: medio carrete del ítem, o 0 si Siesa no acepta exceso. */
+  /** Medio carrete del ítem: referencia de cuánto es razonable pasarse (solo informa). */
   exceso_max_kg?: number
   seriales: Serial[]
 }
@@ -87,13 +88,13 @@ interface LineaCalculada extends LineaDetalle {
   pedido: number
   separado: number
   falta: number
-  /** Lo separado por encima de lo pedido (el despacho puede pasarse hasta medio carrete). */
+  /** Lo separado por encima de lo pedido. */
   sobra: number
-  /** Lo más que la línea puede pasar de lo pedido. */
-  excesoKg: number
   /** Carrete más liviano que se puede agregar: el real del inventario, o el nominal de la descripción. */
   minCarrete: number
   estado: "Pendiente" | "Separando" | "Lista"
+  /** Solo en líneas listas: verde bien, amarillo diferencia cara, rojo sobra un carrete. */
+  semaforo: Semaforo | null
   pct: number
 }
 
@@ -102,16 +103,16 @@ function calcular(linea: LineaDetalle): LineaCalculada {
   const separado = Number(linea.peso_acumulado || 0)
   const falta = Math.max(pedido - separado, 0)
   const sobra = Math.max(separado - pedido, 0)
-  const excesoKg = Number(linea.exceso_max_kg ?? 0)
   // El rango de la descripción es nominal: manda el carrete real más liviano que queda.
   // null = no queda ninguno, así que ningún carrete puede acercar la línea.
   const min = linea.peso_min_disponible === null
     ? Infinity
     : (linea.peso_min_disponible ?? rangoCarrete(linea.f120_descripcion).min)
-  // Lista: ni el carrete más liviano la dejaría más cerca de lo pedido.
+  // Lista: ya llegó a lo pedido, o ni el carrete más liviano la dejaría más cerca.
+  // La tolerancia solo informa: no hay tope (el cliente aprueba la diferencia).
   const estado = linea.seriales.length === 0
     ? "Pendiente"
-    : lineaLista(pedido, separado, min, excesoKg) ? "Lista" : "Separando"
+    : separado >= pedido || lineaLista(pedido, separado, min, Infinity) ? "Lista" : "Separando"
   return {
     ...linea,
     awg: awgDeItem(linea.f120_id) ?? 0,
@@ -119,16 +120,47 @@ function calcular(linea: LineaDetalle): LineaCalculada {
     separado,
     falta,
     sobra,
-    excesoKg,
     minCarrete: min,
     estado,
+    semaforo: estado === "Lista" ? semaforoDe(linea, pedido, separado) : null,
     pct: pedido > 0 ? Math.min(100, (separado / pedido) * 100) : 0,
   }
 }
 
+/*
+ * Semáforo de una línea lista. Solo color, sin avisos: bodega agrega lo que
+ * tiene a mano y el cliente aprueba la diferencia antes de la remisión.
+ *   rojo     sobra un carrete: sin el último escaneado quedaría más cerca de lo pedido
+ *   amarillo la diferencia (por arriba o por abajo) vale más que UMBRAL_PESOS
+ *   verde    lo demás
+ */
+type Semaforo = "verde" | "amarillo" | "rojo"
+
+/** Pesos de diferencia a partir de los cuales la línea se pinta en amarillo. */
+const UMBRAL_PESOS = 300_000
+
+function semaforoDe(linea: LineaDetalle, pedido: number, separado: number): Semaforo {
+  const desvio = separado - pedido
+  const ultimo = linea.seriales.reduce<Serial | null>((u, s) => (!u || s.id > u.id ? s : u), null)
+  if (ultimo && desvio > 0.005 && Math.abs(desvio - Number(ultimo.peso_kg)) < desvio - 0.005) return "rojo"
+  const precio = Number(linea.f431_precio_unitario_base || 0)
+  return Math.abs(desvio) * precio > UMBRAL_PESOS ? "amarillo" : "verde"
+}
+
+const COLOR_SEMAFORO = {
+  verde: { barra: ESTADO.ok, chip: "bg-emerald-100 text-emerald-800", fondo: ESTADO.okFondo, texto: ESTADO.okTexto },
+  amarillo: { barra: CMSA.amarillo, chip: "bg-cmsa-amarillo text-cmsa-tinta", fondo: CMSA.amarillo, texto: CMSA.tinta },
+  rojo: { barra: "#C0392B", chip: "bg-red-100 text-red-800", fondo: ESTADO.errorFondo, texto: ESTADO.errorTexto },
+} as const
+
+/** Barra y chip de una línea: las listas van con el color de su semáforo. */
+function colores(l: LineaCalculada) {
+  return l.semaforo ? COLOR_SEMAFORO[l.semaforo] : COLOR_ESTADO[l.estado]
+}
+
 const COLOR_ESTADO = {
   Lista: { barra: ESTADO.ok, chip: "bg-emerald-100 text-emerald-800" },
-  Separando: { barra: AZUL, chip: "bg-cmsa-amarillo text-cmsa-tinta" },
+  Separando: { barra: AZUL, chip: "bg-cmsa-azul text-white" },
   Pendiente: { barra: CMSA.gris, chip: "bg-cmsa-niebla text-cmsa-gris" },
 } as const
 
@@ -240,29 +272,6 @@ export default function PedidoBodegaDetalle() {
     const repetido = lineas.some((l) => l.seriales.some((s) => String(s.serial).trim() === serie))
     if (repetido) {
       return fallar(`Carrete ${serie} ya leído`, "Ese carrete ya está en este pedido.", destino.id)
-    }
-
-    // Lo más cerca posible de lo pedido, por arriba o por abajo, sin pasar el
-    // exceso de la línea (medio carrete, o nada si Siesa no acepta exceso).
-    if (kilos !== null) {
-      const nuevo = destino.separado + kilos
-      const resultado = encaje(destino.pedido, destino.separado, kilos, destino.excesoKg)
-      if (resultado === "pasa_tope") {
-        return fallar(
-          "No cabe: se pasaría de lo pedido",
-          `Con este carrete (${kg(kilos)} kg) el AWG ${destino.awg} quedaría en ${kg(nuevo)} de ` +
-            `${kg(destino.pedido)} kg; se acepta hasta ${kg(destino.excesoKg)} kg de más. Déjelo en su lugar.`,
-          destino.id,
-        )
-      }
-      if (resultado === "aleja") {
-        return fallar(
-          "Este carrete aleja de lo pedido",
-          `Con él el AWG ${destino.awg} quedaría ${kg(nuevo - destino.pedido)} kg por encima; ` +
-            `sin él faltan ${kg(destino.falta)} kg. Déjelo en su lugar.`,
-          destino.id,
-        )
-      }
     }
 
     await registrar({ linea: destino, serie, kilos, manual, lectura: original })
@@ -420,7 +429,7 @@ export default function PedidoBodegaDetalle() {
           </div>
 
           {lineas.map((l) => {
-            const color = COLOR_ESTADO[l.estado]
+            const color = colores(l)
             const elegida = l.id === actual?.id
             return (
               <button
@@ -471,30 +480,32 @@ export default function PedidoBodegaDetalle() {
                 <Numero etiqueta="PEDIDO" valor={actual.pedido} fondo={CMSA.niebla} color={CMSA.tinta} />
                 <Numero etiqueta="SEPARADO" valor={actual.separado} fondo={AZUL} color={CMSA.blanco} />
                 <Numero
-                  etiqueta={actual.sobra > 0 ? "SOBRA" : actual.estado === "Lista" ? "FALTA · LISTO" : "FALTA"}
+                  etiqueta={
+                    actual.sobra > 0 ? "SOBRA" : actual.estado === "Lista" ? "FALTA · LISTO" : "FALTA"
+                  }
                   valor={actual.sobra > 0 ? actual.sobra : actual.falta}
-                  fondo={actual.estado === "Lista" ? ESTADO.okFondo : CMSA.amarillo}
-                  color={actual.estado === "Lista" ? ESTADO.okTexto : CMSA.tinta}
+                  fondo={actual.semaforo ? COLOR_SEMAFORO[actual.semaforo].fondo : CMSA.niebla}
+                  color={actual.semaforo ? COLOR_SEMAFORO[actual.semaforo].texto : CMSA.tinta}
                 />
               </div>
 
               <div className="h-5 overflow-hidden rounded-full bg-cmsa-borde">
                 <div
                   className="h-full"
-                  style={{ width: `${actual.pct}%`, background: actual.estado === "Lista" ? ESTADO.ok : AZUL }}
+                  style={{ width: `${actual.pct}%`, background: colores(actual).barra }}
                 />
               </div>
 
               <div
                 className="text-xl font-semibold"
-                style={{ color: actual.estado === "Lista" ? ESTADO.okTexto : CMSA.tinta }}
+                style={{ color: actual.semaforo ? COLOR_SEMAFORO[actual.semaforo].texto : CMSA.tinta }}
               >
                 {actual.estado === "Pendiente"
                   ? `Escanee el primer carrete AWG ${actual.awg}.`
                   : actual.estado === "Lista"
                     ? actual.sobra > 0
-                      ? `Calibre listo: ${kg(actual.sobra)} kg por encima de lo pedido. Se despacha así.`
-                      : `Calibre listo: faltan ${kg(actual.falta)} kg y ningún carrete lo acerca más. Se despacha así.`
+                      ? `Calibre listo: ${kg(actual.sobra)} kg por encima de lo pedido.`
+                      : `Calibre listo: faltan ${kg(actual.falta)} kg.`
                     : `Siga escaneando hasta acercarse a ${kg(actual.pedido)} kg.`}
               </div>
             </div>
@@ -636,7 +647,7 @@ export default function PedidoBodegaDetalle() {
       {confirmarFin && (
         <Dialogo
           titulo={`Faltan ${faltan} ${faltan === 1 ? "calibre" : "calibres"} por completar`}
-          detalle="Se compromete en Siesa lo que se logró separar y el pedido queda listo para remisionar. ¿Terminar de todas formas?"
+          detalle="Se compromete en Siesa lo que se logró separar y el cliente aprueba la diferencia antes de la remisión. ¿Terminar de todas formas?"
           confirmar="Terminar así"
           onConfirmar={finalizar}
           onCancelar={() => {
