@@ -181,6 +181,27 @@ export default function PedidoBodegaDetalle() {
   const campo = useRef<HTMLInputElement>(null)
   const enfocar = () => campo.current?.focus()
 
+  // Lecturas que llegan mientras se guarda la anterior: esperan en fila y no se pierden.
+  const ocupado = useRef(false)
+  const cola = useRef<string[]>([])
+  const [libre, setLibre] = useState(0)
+
+  // La pistola es un teclado: su Enter o Tab nunca puede pulsar un botón (Terminar,
+  // Quitar…). Fuera del campo se anulan y el foco vuelve al campo; las letras siguen
+  // al campo, así una lectura que empezó en otro lado no se pierde.
+  useEffect(() => {
+    const guardia = (e: KeyboardEvent) => {
+      if (e.target === campo.current) return
+      if (e.key === "Enter" || e.key === " " || e.key === "Tab") {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+      if (e.key.length === 1 || e.key === "Enter") enfocar()
+    }
+    document.addEventListener("keydown", guardia, true)
+    return () => document.removeEventListener("keydown", guardia, true)
+  }, [])
+
   const cargarPedido = useCallback(async () => {
     try {
       const res = await api.get(`/pedido_detalle/${pedidoId}`)
@@ -226,7 +247,35 @@ export default function PedidoBodegaDetalle() {
   }
 
   const procesar = async (entrada: string) => {
-    if (guardando) return
+    if (!entrada.trim()) return // Enter suelto, sin lectura
+    if (finalizando) {
+      return fallar("El pedido se está terminando", "Espere a que Siesa responda: este carrete no se agregó.")
+    }
+    // Escanear es seguir separando: cierra la pregunta que estuviera abierta.
+    setConfirmarFin(false)
+    setPorQuitar(null)
+    setCarreteNuevo(null)
+    if (ocupado.current) {
+      cola.current.push(entrada)
+      return
+    }
+    ocupado.current = true
+    try {
+      await procesarLectura(entrada)
+    } finally {
+      ocupado.current = false
+      setLibre((n) => n + 1)
+    }
+  }
+
+  // La siguiente de la fila, ya con el pedido recargado.
+  useEffect(() => {
+    const siguiente = cola.current.shift()
+    if (siguiente) procesar(siguiente)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [libre])
+
+  const procesarLectura = async (entrada: string) => {
     const res = leerCodigo(entrada)
     if (!res.ok) return fallar(res.titulo, res.detalle)
 
@@ -338,9 +387,13 @@ export default function PedidoBodegaDetalle() {
     }
   }
 
+  // La lectura se manda sola al completarse; el campo queda vacío para que el
+  // Enter que la pistola manda detrás no vuelva a procesar el resto.
   const alEscribir = (valor: string) => {
-    if (esLecturaCompleta(valor)) procesar(valor)
-    else setTexto(valor)
+    if (esLecturaCompleta(valor)) {
+      setTexto("")
+      procesar(valor)
+    } else setTexto(valor)
   }
 
   const quitar = async () => {
@@ -377,7 +430,7 @@ export default function PedidoBodegaDetalle() {
       // Siesa no lo aceptó: el pedido sigue en bodega para quitar o cambiar carretes.
       setAviso({
         tipo: "error",
-        titulo: "Siesa no aceptó el pedido",
+        titulo: "El pedido no se terminó",
         detalle: mensajeError(err, "Intente otra vez."),
       })
     } finally {
@@ -527,8 +580,10 @@ export default function PedidoBodegaDetalle() {
                 value={texto}
                 onChange={(e) => alEscribir(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  // Enter o Tab (según cómo esté configurada la pistola) cierran la lectura.
+                  if (e.key === "Enter" || e.key === "Tab") {
                     e.preventDefault()
+                    setTexto("")
                     procesar(texto)
                   }
                 }}
@@ -597,8 +652,13 @@ export default function PedidoBodegaDetalle() {
       </div>
 
       <footer className="flex h-24 flex-shrink-0 items-center justify-end gap-4 px-6 pb-5">
+        {/* Terminar lo decide una persona: solo un toque (detail 0 = clic de teclado) y siempre con confirmación */}
         <button
-          onClick={() => (faltan > 0 ? setConfirmarFin(true) : finalizar())}
+          tabIndex={-1}
+          onClick={(e) => {
+            if (e.detail === 0) return
+            setConfirmarFin(true)
+          }}
           disabled={finalizando || lineas.length === 0}
           className="h-16 rounded-2xl px-8 text-[22px] font-bold disabled:opacity-60"
           style={faltan > 0 ? { background: CMSA.borde, color: CMSA.tinta } : { background: ESTADO.ok, color: "#FFFFFF" }}
@@ -646,15 +706,34 @@ export default function PedidoBodegaDetalle() {
 
       {confirmarFin && (
         <Dialogo
-          titulo={`Faltan ${faltan} ${faltan === 1 ? "calibre" : "calibres"} por completar`}
-          detalle="Se compromete en Siesa lo que se logró separar; el cliente aprueba la diferencia antes de la remisión. ¿Terminar de todas formas?"
-          confirmar="Terminar así"
+          titulo={
+            faltan > 0
+              ? `Faltan ${faltan} ${faltan === 1 ? "calibre" : "calibres"} por completar`
+              : `¿Terminar el pedido ${pedido.f430_consec_docto}?`
+          }
+          detalle={
+            `Se compromete en Siesa lo separado: ${kg(lineas.reduce((t, l) => t + l.separado, 0))} kg en ` +
+            `${lineas.reduce((t, l) => t + l.seriales.length, 0)} carrete(s). Después no se pueden agregar ni quitar carretes.` +
+            (faltan > 0 ? " El cliente aprueba la diferencia antes de la remisión." : "")
+          }
+          confirmar={faltan > 0 ? "Terminar así" : "Terminar"}
           onConfirmar={finalizar}
           onCancelar={() => {
             setConfirmarFin(false)
             enfocar()
           }}
         />
+      )}
+
+      {finalizando && (
+        <div role="alertdialog" aria-live="assertive" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-8 text-center shadow-xl">
+            <h2 className="text-3xl font-bold">Comprometiendo en Siesa…</h2>
+            <p className="mt-3 text-xl text-cmsa-gris">
+              Puede tardar un minuto. No escanee más carretes de este pedido hasta que termine.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -704,11 +783,20 @@ function Dialogo({
         <h2 className="text-2xl font-bold">{titulo}</h2>
         <p className="mt-2 text-lg text-cmsa-gris">{detalle}</p>
         <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onCancelar} className="h-14 rounded-xl border-2 border-cmsa-borde px-6 text-lg font-semibold">
+          <button
+            tabIndex={-1}
+            onClick={onCancelar}
+            className="h-14 rounded-xl border-2 border-cmsa-borde px-6 text-lg font-semibold"
+          >
             Cancelar
           </button>
+          {/* Confirmar solo con un toque: un Enter de la pistola (detail 0) no confirma nada */}
           <button
-            onClick={onConfirmar}
+            tabIndex={-1}
+            onClick={(e) => {
+              if (e.detail === 0) return
+              onConfirmar()
+            }}
             className="h-14 rounded-xl px-6 text-lg font-bold text-white"
             style={{ background: AZUL }}
           >
