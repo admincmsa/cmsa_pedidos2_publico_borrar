@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react"
 import { useNavigate } from "react-router-dom"
-import api, { mensajeError } from "../../services/api"
-import { Trash2, AlertTriangle, Eye, RefreshCcwDot } from "lucide-react"
+import api from "../../services/api"
+import { AlertTriangle, Eye, RefreshCcwDot } from "lucide-react"
 import { estadoPedido, alertaSiesa } from "../../utils/estadosPedido"
 import { useRefrescoAutomatico } from "../../utils/useRefrescoAutomatico"
 import { kg } from "../../bodega/carrete"
@@ -9,7 +9,6 @@ import BarraEstados from "./BarraEstados"
 import { cuentaEl, grupoDe, hoyLocal, type Grupo } from "../../utils/gruposPedido"
 import Chip from "../ui/Chip"
 import Aviso, { type TipoAviso } from "../ui/Aviso"
-import Dialogo from "../ui/Dialogo"
 
 /**
  * Pedidos para comercial: una tabla del sistema de diseño (encabezado azul,
@@ -19,7 +18,8 @@ import Dialogo from "../ui/Dialogo"
  * - bodega compromete en Siesa lo separado al pulsar «Terminar»;
  * - la remisión se hace en Siesa y la importación deja el pedido Cumplido.
  *
- * Lo único que se hace desde aquí es abrir el pedido o quitarlo de la app.
+ * Desde aquí solo se abre el pedido. Ni comercial ni bodega lo quitan de la app:
+ * un pedido que no va se anula en Siesa y la importación lo muestra con su aviso.
  */
 
 interface Importacion {
@@ -50,9 +50,6 @@ interface PedidoResumen {
   resumen_cobre?: { calibres: number[]; kg_pedidos: number; kg_separados: number; lineas: number; listas: number }
 }
 
-// Quitar un pedido de la app (en Siesa no cambia nada).
-type Accion = { tipo: "eliminar"; pedido: PedidoResumen }
-
 // Los botones de la fila no abren el pedido: la fila entera sí.
 const soloBoton = (accion: () => void) => (e: MouseEvent) => {
   e.stopPropagation()
@@ -63,8 +60,6 @@ export default function PedidoComercialLista() {
   const navigate = useNavigate()
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([])
   const [cargando, setCargando] = useState(false)
-  const [accion, setAccion] = useState<Accion | null>(null)
-  const [ocupado, setOcupado] = useState<number | null>(null)
   const [aviso, setAviso] = useState<{ tipo: TipoAviso; titulo: string; detalle?: string } | null>(null)
   // Lo que cuenta es el día: los abiertos hasta esa fecha y los cumplidos de ese día.
   const [fecha, setFecha] = useState(hoyLocal)
@@ -98,28 +93,6 @@ export default function PedidoComercialLista() {
     [pedidos, fecha, grupo],
   )
 
-  const ejecutar = async () => {
-    if (!accion) return
-    const { pedido } = accion
-    setOcupado(pedido.id)
-    setAviso(null)
-    try {
-      await api.put(`/pedido_eliminar/${pedido.id}`)
-      setAviso({ tipo: "ok", titulo: `Pedido ${pedido.f430_consec_docto} eliminado de la app` })
-      setAccion(null)
-      await cargarPedidos(true)
-    } catch (err) {
-      setAccion(null)
-      setAviso({
-        tipo: "error",
-        titulo: `No se pudo eliminar el pedido ${pedido.f430_consec_docto}`,
-        detalle: mensajeError(err, "Intente otra vez; si vuelve a fallar, avise a sistemas."),
-      })
-    } finally {
-      setOcupado(null)
-    }
-  }
-
   return (
     <div className="flex min-h-screen flex-col">
       <BarraEstados pedidos={pedidos} fecha={fecha} onFecha={setFecha} seleccionado={grupo} onSeleccionar={setGrupo} />
@@ -148,17 +121,25 @@ export default function PedidoComercialLista() {
         {aviso && <Aviso {...aviso} onCerrar={() => setAviso(null)} />}
 
         <div className="overflow-x-auto rounded-xl border border-cmsa-borde bg-white">
-          <table className="tabla-cmsa">
+          {/* Anchos fijos y proporcionados para la tablet de 10"; el cliente se parte en dos líneas si no cabe */}
+          <table className="tabla-cmsa table-fixed">
+            <colgroup>
+              <col className="w-[13%]" />
+              <col className="w-[33%]" />
+              <col className="w-[15%]" />
+              <col className="w-[17%]" />
+              <col className="w-[14%]" />
+              <col className="w-[8%]" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Pedido</th>
                 <th>Cliente</th>
                 <th>Calibres</th>
-                {/* !: .tabla-cmsa th pone text-left; el encabezado va alineado con sus valores */}
-                <th className="!text-right">Kilos</th>
+                {/* !: .tabla-cmsa th pone text-left; Kilos va centrado entre Calibres y Estado */}
+                <th className="!text-center">Kilos</th>
                 <th>Estado</th>
-                <th className="w-14 !text-center">Ver</th>
-                <th className="w-12"><span className="sr-only">Eliminar</span></th>
+                <th className="!text-center">Ver</th>
               </tr>
             </thead>
             <tbody>
@@ -174,9 +155,9 @@ export default function PedidoComercialLista() {
                       <div className="display text-[20px] text-cmsa-tinta">{p.f430_consec_docto}</div>
                       <div className="mt-0.5 text-[13px] text-cmsa-gris">{p.f430_id_fecha || "—"}</div>
                     </td>
-                    <td className="min-w-[280px] font-semibold">{p.f200_razon_social_pedido_fact}</td>
+                    <td className="font-semibold">{p.f200_razon_social_pedido_fact}</td>
                     <td className="whitespace-nowrap">{calibres.length > 0 ? `AWG ${calibres.join(" - ")}` : "—"}</td>
-                    <td className="whitespace-nowrap text-right tabular-nums">
+                    <td className="whitespace-nowrap text-center tabular-nums">
                       {r && r.kg_pedidos > 0 ? (
                         <>
                           <b>{kg(r.kg_separados)}</b>
@@ -209,25 +190,12 @@ export default function PedidoComercialLista() {
                         <Eye size={20} />
                       </button>
                     </td>
-                    <td className="text-center">
-                      {p.estado !== "remisionado" && p.estado !== "comprometido" && (
-                        <button
-                          title="Eliminar pedido"
-                          aria-label={`Eliminar el pedido ${p.f430_consec_docto}`}
-                          onClick={soloBoton(() => setAccion({ tipo: "eliminar", pedido: p }))}
-                          disabled={ocupado === p.id}
-                          className="flex h-10 w-10 items-center justify-center rounded-lg text-[#8A1B12] hover:bg-[#FDE7E5] disabled:opacity-50"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      )}
-                    </td>
                   </tr>
                 )
               })}
               {!cargando && visibles.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-cmsa-gris">
+                  <td colSpan={6} className="py-10 text-center text-cmsa-gris">
                     {pedidos.length === 0
                       ? "No hay pedidos todavía. Los comprometidos en Siesa que llevan cobre aparecen aquí solos."
                       : "No hay pedidos en este filtro para ese día."}
@@ -239,17 +207,6 @@ export default function PedidoComercialLista() {
         </div>
       </div>
 
-      {accion && (
-        <Dialogo
-          titulo={`¿Eliminar el pedido ${accion.pedido.f430_consec_docto} de la app?`}
-          detalle="Desaparece de las listas de comercial y de bodega, y no vuelve a entrar. En Siesa no cambia nada."
-          confirmar="Eliminar"
-          peligro
-          ocupado={ocupado === accion.pedido.id}
-          onConfirmar={ejecutar}
-          onCancelar={() => setAccion(null)}
-        />
-      )}
     </div>
   )
 }
