@@ -44,6 +44,8 @@ interface PedidoResumen {
   estado: string
   estado_siesa: number | null
   remision: string | null
+  /** Quién de bodega lo separó (null: nadie todavía). */
+  separado_por?: string | null
   fecha_ingreso?: string | null
   fecha_remisionado?: string | null
   total_lineas: number
@@ -124,12 +126,13 @@ export default function PedidoComercialLista() {
           {/* Anchos fijos y proporcionados para la tablet de 10"; el cliente se parte en dos líneas si no cabe */}
           <table className="tabla-cmsa table-fixed">
             <colgroup>
-              <col className="w-[13%]" />
-              <col className="w-[33%]" />
-              <col className="w-[15%]" />
-              <col className="w-[17%]" />
+              <col className="w-[11%]" />
+              <col className="w-[27%]" />
               <col className="w-[14%]" />
-              <col className="w-[8%]" />
+              <col className="w-[15%]" />
+              <col className="w-[13%]" />
+              <col className="w-[13%]" />
+              <col className="w-[7%]" />
             </colgroup>
             <thead>
               <tr>
@@ -138,6 +141,7 @@ export default function PedidoComercialLista() {
                 <th>Calibres</th>
                 {/* !: .tabla-cmsa th pone text-left; Kilos va centrado entre Calibres y Estado */}
                 <th className="!text-center">Kilos</th>
+                <th>Separó</th>
                 <th>Estado</th>
                 <th className="!text-center">Ver</th>
               </tr>
@@ -167,6 +171,7 @@ export default function PedidoComercialLista() {
                         "—"
                       )}
                     </td>
+                    <td className="text-[15px]">{p.separado_por || <span className="text-cmsa-gris">—</span>}</td>
                     <td>
                       <Chip tono={estado.tono}>{estado.texto}</Chip>
                       {estado.clave === "cumplido" && p.remision && (
@@ -195,7 +200,7 @@ export default function PedidoComercialLista() {
               })}
               {!cargando && visibles.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-cmsa-gris">
+                  <td colSpan={7} className="py-10 text-center text-cmsa-gris">
                     {pedidos.length === 0
                       ? "No hay pedidos todavía. Los comprometidos en Siesa que llevan cobre aparecen aquí solos."
                       : "No hay pedidos en este filtro para ese día."}

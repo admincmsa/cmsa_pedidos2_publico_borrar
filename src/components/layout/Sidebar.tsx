@@ -35,7 +35,7 @@ interface MenuItem {
 
 const MENU: MenuItem[] = [
   { name: "Pedidos por separar", path: "/bodega", icon: Warehouse, roles: ["admin", "bodega"] },
-  { name: "Pedidos", path: "/comercial", icon: FileSpreadsheet, roles: ["admin", "comercial"] },
+  { name: "Pedidos", path: "/comercial", icon: FileSpreadsheet, roles: ["admin", "comercial", "bodega"] },
   { name: "Inventario", path: "/inventario", icon: Boxes, roles: ["admin", "comercial", "bodega"] },
   { name: "Usuarios", path: "/usuarios", icon: Users, roles: ["admin"] },
 ]

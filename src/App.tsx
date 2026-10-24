@@ -362,7 +362,7 @@ export default function App() {
           <Route
             path="/comercial"
             element={
-              <ProtectedRoute rolesPermitidos={["admin", "comercial"]}>
+              <ProtectedRoute rolesPermitidos={["admin", "comercial", "bodega"]}>
                 <Layout><PedidoComercialLista /></Layout>
               </ProtectedRoute>
             }
@@ -389,7 +389,7 @@ export default function App() {
           <Route
             path="/comercial/detalle/:pedidoId"
             element={
-              <ProtectedRoute rolesPermitidos={["admin", "comercial"]}>
+              <ProtectedRoute rolesPermitidos={["admin", "comercial", "bodega"]}>
                 <Layout><PedidoComercialDetalle /></Layout>
               </ProtectedRoute>
             }
@@ -398,7 +398,7 @@ export default function App() {
           <Route
             path="/comercial/detalle/:pedidoId/impreso"
             element={
-              <ProtectedRoute rolesPermitidos={["admin", "comercial"]}>
+              <ProtectedRoute rolesPermitidos={["admin", "comercial", "bodega"]}>
                 <PedidoImpreso />
               </ProtectedRoute>
             }

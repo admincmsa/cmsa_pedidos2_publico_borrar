@@ -34,6 +34,11 @@ interface LineaSiesa {
   f431_vlr_bruto?: number
   f431_vlr_neto?: number
   f431_notas?: string | null
+  /** Del encabezado del pedido en Siesa (datos_comerciales del backend). */
+  telefono?: string | null
+  forma_pago?: string | null
+  orden_compra?: string | null
+  notas_pedido?: string | null
 }
 
 // Alto de la tabla de ítems en la hoja, en puntos: encabezado + filas + relleno.
@@ -42,7 +47,8 @@ const ALTO_ENCABEZADO = 13.8
 const ALTO_FILA = 16.56
 
 const pesos = (n: number) => "$" + Math.round(n).toLocaleString("es-CO")
-const cantidad = (n: number | undefined) => (n ?? 0).toFixed(4)
+// Dos decimales: 20.75, no 20.7500
+const cantidad = (n: number | undefined) => Number(n ?? 0).toFixed(2)
 
 function fecha(iso: string | null) {
   if (!iso) return ""
@@ -76,7 +82,8 @@ function lineasDeLaApp(p: PedidoApp): LineaSiesa[] {
     direccion_envio: p.direccion_envio,
     ciudad_envio: p.ciudad_envio,
     depto_envio: p.depto_envio,
-    f431_notas: d.f431_notas ?? p.f431_notas,
+    f431_notas: d.f431_notas,
+    notas_pedido: p.f431_notas,
   }))
 }
 
@@ -116,7 +123,8 @@ export default function PedidoImpreso() {
   const p = lineas[0]
   const bruto = lineas.reduce((s, l) => s + (l.f431_vlr_bruto ?? 0), 0)
   const neto = lineas.reduce((s, l) => s + (l.f431_vlr_neto ?? 0), 0)
-  const notas = [...new Set(lineas.map((l) => l.f431_notas).filter(Boolean))].join("\n")
+  // Las notas del pedido y, debajo, las de cada línea si las hay
+  const notas = [...new Set([p.notas_pedido, ...lineas.map((l) => l.f431_notas)].filter(Boolean))].join("\n")
   const ciudad = [p.ciudad_envio, p.depto_envio].filter(Boolean).join(", ")
   const relleno = Math.max(0, ALTO_TABLA - ALTO_ENCABEZADO - lineas.length * ALTO_FILA)
   const numero = `${p.f430_id_co}-${p.f430_id_tipo_docto}-${String(p.f430_consec_docto).padStart(8, "0")}`
@@ -156,13 +164,13 @@ export default function PedidoImpreso() {
           <p><b>Nombre:</b>{p.f200_razon_social_pedido_fact}</p>
           <p><b>Dirección:</b>{p.direccion_envio ?? ""}</p>
           <p><b>Ciudad:</b>{ciudad}</p>
-          <p><b>Teléfono:</b></p>
+          <p><b>Teléfono:</b>{p.telefono ?? ""}</p>
         </div>
 
         <div className="pv-caja pv-datos">
           <p><b>Fecha:</b>{fecha(p.f430_id_fecha)}</p>
-          <p><b>Orden de compra:</b></p>
-          <p><b>Forma de Pago:</b></p>
+          <p><b>Orden de compra:</b>{p.orden_compra ?? ""}</p>
+          <p><b>Forma de Pago:</b>{p.forma_pago ?? ""}</p>
           <p><b>Vendedor:</b>{p.f200_razon_social_pedido_vend ?? ""}</p>
         </div>
 
