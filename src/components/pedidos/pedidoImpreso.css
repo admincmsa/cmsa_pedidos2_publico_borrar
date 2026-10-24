@@ -10,13 +10,15 @@
 .pv-barra button { padding: 8px 16px; border-radius: 8px; border: 1px solid #9ca3af; background: #fff; cursor: pointer; }
 .pv-barra button.pv-principal { background: #1d1aa8; border-color: #1d1aa8; color: #fff; }
 
+.pv-aviso { max-width: 210mm; margin: 0 auto 12px; padding: 10px 14px; border-radius: 8px; background: #FBF3B8; color: #5C4A00; font: 14px/1.35 system-ui, sans-serif; }
+
 .pv-hoja { position: relative; width: 210mm; height: 297mm; margin: 0 auto; background: #fff; overflow: hidden; }
 .pv-hoja > * { position: absolute; }
 
 @page { size: A4; margin: 0; }
 @media print {
   .pv-fondo { background: none; padding: 0; }
-  .pv-barra { display: none; }
+  .pv-barra, .pv-aviso { display: none; }
 }
 
 /* Encabezado */

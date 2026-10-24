@@ -9,8 +9,10 @@ import "./pedidoImpreso.css"
  * las líneas: cobre, aluminio, barniz o lo que lleve. Así comercial ve si está
  * completo para remisionar.
  *
- * Los datos se leen de Siesa en el momento (/pedido_listar_activo), no de la
- * base de la app: las cantidades comprometidas son las de Siesa.
+ * Los datos se leen de Siesa en el momento (/pedido_listar_activo): las
+ * cantidades comprometidas son las de Siesa. Si Siesa no responde, se arma con
+ * la base de la app (que la importación pone al día cada 10 minutos) y la
+ * barra lo avisa.
  */
 
 interface LineaSiesa {
@@ -48,22 +50,61 @@ function fecha(iso: string | null) {
   return `${d}/${m}/${a}`
 }
 
+interface PedidoApp {
+  f430_consec_docto: number
+  f430_id_fecha: string | null
+  f430_id_tipo_docto?: string
+  f200_razon_social_pedido_fact: string
+  f200_razon_social_pedido_vend?: string | null
+  f431_notas?: string | null
+  direccion_envio?: string | null
+  ciudad_envio?: string | null
+  depto_envio?: string | null
+  detalle: (Partial<LineaSiesa> & { f120_id: string; f120_descripcion: string; f431_cant_pedida_base: number })[]
+}
+
+// Las mismas líneas, tomadas de la base de la app (/pedido_detalle).
+function lineasDeLaApp(p: PedidoApp): LineaSiesa[] {
+  return p.detalle.map((d) => ({
+    ...d,
+    f430_consec_docto: p.f430_consec_docto,
+    f430_id_co: "1",
+    f430_id_tipo_docto: p.f430_id_tipo_docto ?? "Z3",
+    f430_id_fecha: p.f430_id_fecha,
+    f200_razon_social_pedido_fact: p.f200_razon_social_pedido_fact,
+    f200_razon_social_pedido_vend: p.f200_razon_social_pedido_vend,
+    direccion_envio: p.direccion_envio,
+    ciudad_envio: p.ciudad_envio,
+    depto_envio: p.depto_envio,
+    f431_notas: d.f431_notas ?? p.f431_notas,
+  }))
+}
+
 export default function PedidoImpreso() {
   const { pedidoId } = useParams()
   const navigate = useNavigate()
   const [lineas, setLineas] = useState<LineaSiesa[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // null: datos de Siesa; texto: por qué se usó la base de la app
+  const [sinSiesa, setSinSiesa] = useState<string | null>(null)
 
   useEffect(() => {
     ;(async () => {
+      let pedido
       try {
-        const pedido = await api.get(`/pedido_detalle/${pedidoId}`)
+        pedido = (await api.get(`/pedido_detalle/${pedidoId}`)).data
+      } catch (err) {
+        setError(mensajeError(err, "No se pudo leer el pedido"))
+        return
+      }
+      try {
         const siesa = await api.get("/pedido_listar_activo", {
-          params: { f430_consec_docto: pedido.data.f430_consec_docto },
+          params: { f430_consec_docto: pedido.f430_consec_docto },
         })
         setLineas(siesa.data)
       } catch (err) {
-        setError(mensajeError(err, "No se pudo leer el pedido en Siesa"))
+        setSinSiesa(mensajeError(err, "Siesa no respondió"))
+        setLineas(lineasDeLaApp(pedido))
       }
     })()
   }, [pedidoId])
@@ -84,8 +125,13 @@ export default function PedidoImpreso() {
     <div className="pv-fondo">
       <div className="pv-barra">
         <button onClick={() => navigate(-1)}>Volver</button>
-        <button className="pv-principal" onClick={() => window.print()}>Imprimir</button>
+        <button className="pv-principal" onClick={() => window.print()}>Imprimir o guardar PDF</button>
       </div>
+      {sinSiesa && (
+        <div className="pv-aviso" title={sinSiesa}>
+          Siesa no respondió. Se muestran los datos de la app, al día con la última revisión de Siesa.
+        </div>
+      )}
 
       <div className="pv-hoja">
         <img className="pv-logo" src={logo} alt="CMSA" />

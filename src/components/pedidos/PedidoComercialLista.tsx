@@ -197,9 +197,17 @@ export default function PedidoComercialLista() {
                         </div>
                       )}
                     </td>
-                    {/* La fila entera abre el pedido; el ojo lo indica */}
+                    {/* La fila abre el detalle (carretes); el ojo, el pedido completo como en papel,
+                        con todas las familias, para imprimirlo o guardarlo en PDF */}
                     <td className="text-center">
-                      <Eye size={18} className="inline text-cmsa-azul" aria-label="Ver el pedido" />
+                      <button
+                        title="Ver el pedido completo (para imprimir o guardar en PDF)"
+                        aria-label={`Ver el pedido ${p.f430_consec_docto} completo`}
+                        onClick={soloBoton(() => navigate(`/comercial/detalle/${p.id}/impreso`))}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-cmsa-azul hover:bg-cmsa-azul/10"
+                      >
+                        <Eye size={20} />
+                      </button>
                     </td>
                     <td className="text-center">
                       {p.estado !== "remisionado" && p.estado !== "comprometido" && (
