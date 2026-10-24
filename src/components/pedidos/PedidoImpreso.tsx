@@ -39,6 +39,25 @@ interface LineaSiesa {
   forma_pago?: string | null
   orden_compra?: string | null
   notas_pedido?: string | null
+  /** Lo comprometido de la línea por lote, como lo imprime Siesa (solo con Siesa en línea). */
+  compromisos?: { ubicacion: string; lote: string; cantidad: number }[]
+}
+
+/** Un renglón de la hoja: la línea entera, o una parte comprometida en un lote. */
+interface Renglon {
+  linea: LineaSiesa
+  comprometida: number | undefined
+  ubicacion: string
+  lote: string
+}
+
+// Como Siesa: un renglón por lote comprometido; la línea sin compromiso, en un solo renglón.
+function renglones(lineas: LineaSiesa[]): Renglon[] {
+  return lineas.flatMap((linea) =>
+    linea.compromisos && linea.compromisos.length > 0
+      ? linea.compromisos.map((c) => ({ linea, comprometida: c.cantidad, ubicacion: c.ubicacion, lote: c.lote }))
+      : [{ linea, comprometida: linea.f431_cant_comprometida_base, ubicacion: "", lote: "" }],
+  )
 }
 
 // Alto de la tabla de ítems en la hoja, en puntos: encabezado + filas + relleno.
@@ -126,7 +145,8 @@ export default function PedidoImpreso() {
   // Las notas del pedido y, debajo, las de cada línea si las hay
   const notas = [...new Set([p.notas_pedido, ...lineas.map((l) => l.f431_notas)].filter(Boolean))].join("\n")
   const ciudad = [p.ciudad_envio, p.depto_envio].filter(Boolean).join(", ")
-  const relleno = Math.max(0, ALTO_TABLA - ALTO_ENCABEZADO - lineas.length * ALTO_FILA)
+  const filas = renglones(lineas)
+  const relleno = Math.max(0, ALTO_TABLA - ALTO_ENCABEZADO - filas.length * ALTO_FILA)
   const numero = `${p.f430_id_co}-${p.f430_id_tipo_docto}-${String(p.f430_consec_docto).padStart(8, "0")}`
 
   return (
@@ -196,16 +216,16 @@ export default function PedidoImpreso() {
             </tr>
           </thead>
           <tbody>
-            {lineas.map((l) => (
-              <tr key={String(l.f120_id) + l.f120_descripcion}>
+            {filas.map(({ linea: l, comprometida, ubicacion, lote }, i) => (
+              <tr key={`${l.f120_id}-${lote}-${i}`}>
                 <td className="pv-desc">
                   <div>{String(l.f120_id).padStart(8, "0")} {l.f120_descripcion}</div>
                 </td>
                 <td className="pv-um">{l.f431_id_unidad_medida ?? ""}</td>
                 <td>{cantidad(l.f431_cant_pedida_base)}</td>
-                <td>{cantidad(l.f431_cant_comprometida_base)}</td>
-                <td></td>
-                <td></td>
+                <td>{cantidad(comprometida)}</td>
+                <td>{ubicacion}</td>
+                <td>{lote}</td>
                 <td>{pesos(l.f431_precio_unitario_base ?? 0)}</td>
               </tr>
             ))}
