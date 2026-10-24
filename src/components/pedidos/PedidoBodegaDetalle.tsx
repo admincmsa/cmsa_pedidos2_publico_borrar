@@ -175,7 +175,9 @@ export default function PedidoBodegaDetalle() {
   const [guardando, setGuardando] = useState(false)
   const [finalizando, setFinalizando] = useState(false)
   const [porQuitar, setPorQuitar] = useState<Serial | null>(null)
-  const [confirmarFin, setConfirmarFin] = useState(false)
+  // Pregunta al pulsar Terminar: confirmar, un calibre que todavía lleva otro
+  // carrete, o la declaración de que ese carrete no está en la bodega.
+  const [confirmarFin, setConfirmarFin] = useState<false | "terminar" | "lleva_otro" | "sin_carretes">(false)
   const [carreteNuevo, setCarreteNuevo] = useState<CarreteNuevo | null>(null)
 
   const campo = useRef<HTMLInputElement>(null)
@@ -415,12 +417,13 @@ export default function PedidoBodegaDetalle() {
     }
   }
 
-  const finalizar = async () => {
+  // sinCarretes: ítems que bodega declaró sin carretes en la bodega aunque el inventario diga que hay.
+  const finalizar = async (sinCarretes: number[] = []) => {
     setConfirmarFin(false)
     setFinalizando(true)
     try {
       // Terminar compromete en Siesa lo separado (no hay botón Comprometer).
-      const res = await api.put(`/pedido_finalizar_separacion/${pedidoId}`)
+      const res = await api.put(`/pedido_finalizar_separacion/${pedidoId}`, { sin_carretes: sinCarretes })
       const numero = pedido?.f430_consec_docto
       const texto = res.data?.simulacion
         ? `Pedido ${numero} separado. Simulación: no se escribió en Siesa.`
@@ -442,6 +445,9 @@ export default function PedidoBodegaDetalle() {
 
   const listas = lineas.filter((l) => l.estado === "Lista").length
   const faltan = lineas.length - listas
+  // Calibres a los que todavía les cabe un carrete del inventario: así no se puede terminar.
+  const llevanOtro = lineas.filter((l) => l.minCarrete !== Infinity && !lineaLista(l.pedido, l.separado, l.minCarrete, Infinity))
+  const calibresOtro = llevanOtro.map((l) => `AWG ${l.awg}`).join(", ")
   const destinoEnvio = [pedido.direccion_envio, [pedido.ciudad_envio, pedido.depto_envio].filter(Boolean).join(", ")]
     .filter(Boolean)
     .join(" · ")
@@ -657,7 +663,7 @@ export default function PedidoBodegaDetalle() {
           tabIndex={-1}
           onClick={(e) => {
             if (e.detail === 0) return
-            setConfirmarFin(true)
+            setConfirmarFin(llevanOtro.length > 0 ? "lleva_otro" : "terminar")
           }}
           disabled={finalizando || lineas.length === 0}
           className="h-16 rounded-2xl px-8 text-[22px] font-bold disabled:opacity-60"
@@ -704,7 +710,41 @@ export default function PedidoBodegaDetalle() {
         />
       )}
 
-      {confirmarFin && (
+      {confirmarFin === "lleva_otro" && (
+        <Dialogo
+          titulo={`${calibresOtro} todavía ${llevanOtro.length === 1 ? "lleva" : "llevan"} otro carrete`}
+          detalle={
+            llevanOtro
+              .map((l) => `AWG ${l.awg}: ${kg(l.separado)} de ${kg(l.pedido)} kg; hay carretes desde ${kg(l.minCarrete)} kg.`)
+              .join(" ") + " Escanee otro carrete antes de terminar."
+          }
+          confirmar="Seguir separando"
+          onConfirmar={() => {
+            setConfirmarFin(false)
+            enfocar()
+          }}
+          cancelar="No hay en bodega"
+          onCancelar={() => setConfirmarFin("sin_carretes")}
+        />
+      )}
+
+      {confirmarFin === "sin_carretes" && (
+        <Dialogo
+          titulo={`¿Terminar sin completar ${calibresOtro}?`}
+          detalle={
+            `Confirme que en la bodega no queda ningún carrete de ${calibresOtro}, aunque el inventario diga que sí. ` +
+            "Queda registrado con su nombre y se compromete en Siesa lo separado."
+          }
+          confirmar="Sí, no hay"
+          onConfirmar={() => finalizar(llevanOtro.map((l) => Number(l.f120_id)))}
+          onCancelar={() => {
+            setConfirmarFin(false)
+            enfocar()
+          }}
+        />
+      )}
+
+      {confirmarFin === "terminar" && (
         <Dialogo
           titulo={
             faltan > 0
@@ -717,7 +757,7 @@ export default function PedidoBodegaDetalle() {
             (faltan > 0 ? " El cliente aprueba la diferencia antes de la remisión." : "")
           }
           confirmar={faltan > 0 ? "Terminar así" : "Terminar"}
-          onConfirmar={finalizar}
+          onConfirmar={() => finalizar()}
           onCancelar={() => {
             setConfirmarFin(false)
             enfocar()
@@ -769,12 +809,14 @@ function Dialogo({
   detalle,
   confirmar,
   onConfirmar,
+  cancelar = "Cancelar",
   onCancelar,
 }: {
   titulo: string
   detalle: string
   confirmar: string
   onConfirmar: () => void
+  cancelar?: string
   onCancelar: () => void
 }) {
   return (
@@ -785,10 +827,13 @@ function Dialogo({
         <div className="mt-6 flex justify-end gap-3">
           <button
             tabIndex={-1}
-            onClick={onCancelar}
+            onClick={(e) => {
+              if (e.detail === 0) return
+              onCancelar()
+            }}
             className="h-14 rounded-xl border-2 border-cmsa-borde px-6 text-lg font-semibold"
           >
-            Cancelar
+            {cancelar}
           </button>
           {/* Confirmar solo con un toque: un Enter de la pistola (detail 0) no confirma nada */}
           <button
