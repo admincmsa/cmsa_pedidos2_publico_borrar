@@ -8,6 +8,7 @@ import { useRefrescoAutomatico } from "../../utils/useRefrescoAutomatico"
 import Chip from "../ui/Chip"
 import BarraEstados from "./BarraEstados"
 import { cuentaEl, grupoDe, hoyLocal } from "../../utils/gruposPedido"
+import { alertaSiesa } from "../../utils/estadosPedido"
 
 /**
  * Pedidos por separar, para la tablet de bodega.
@@ -41,6 +42,7 @@ interface PedidoResumen {
   f430_consec_docto: number
   f200_razon_social_pedido_fact: string
   estado: string
+  estado_siesa?: number | null
   total_lineas: number
   direccion_envio: string | null
   ciudad_envio: string | null
@@ -154,6 +156,13 @@ export default function PedidoBodegaLista() {
                   </span>
                   {p.estado === "separado" && <Chip tono="alerta" grande>Falta comprometer</Chip>}
                 </div>
+
+                {/* Comercial lo anuló, lo retuvo o lo cumplió en Siesa: no se separa */}
+                {alertaSiesa(p.estado, p.estado_siesa) && (
+                  <div className="rounded-lg px-3 py-2 text-[15px] font-bold" style={{ background: ESTADO.errorFondo, color: ESTADO.errorTexto }}>
+                    {alertaSiesa(p.estado, p.estado_siesa)} · no separar
+                  </div>
+                )}
 
                 <div className="truncate text-lg font-semibold">{p.f200_razon_social_pedido_fact}</div>
 

@@ -257,6 +257,11 @@ export default function PedidoImpreso() {
           <div className="pv-firma" style={{ left: "379.5pt" }}>Recibido</div>
         </div>
 
+        {/* Sale también en el papel: estos datos son de la app, no confirmados en Siesa */}
+        {sinSiesa && (
+          <div className="pv-origen">DATOS DE LA APP · SIESA NO RESPONDIÓ AL IMPRIMIR · VERIFICAR EN SIESA</div>
+        )}
+
         <div className="pv-pie">
           <span>REIMPRESO</span>
           <span>ORIGINAL</span>

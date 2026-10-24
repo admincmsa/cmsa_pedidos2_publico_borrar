@@ -72,6 +72,7 @@
 .pv-firma span { position: absolute; bottom: 100%; left: 6pt; right: 0; line-height: 17.6pt; }
 
 .pv-pie { left: 22.4pt; top: 768.1pt; width: 553.8pt; display: flex; }
+.pv-origen { left: 22.4pt; top: 752pt; width: 553.8pt; text-align: center; font-weight: bold; font-size: 8.5pt; border: 1px solid #000; padding: 2pt 0; }
 .pv-pie span { flex: 1; }
 .pv-pie span:nth-child(2) { text-align: center; }
 .pv-pie span:last-child  { text-align: right; }

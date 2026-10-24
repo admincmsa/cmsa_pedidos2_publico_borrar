@@ -8,6 +8,7 @@ import {
 } from "../../bodega/carrete"
 import { CMSA, DISPLAY, ESTADO } from "../../theme/cmsa"
 import Chip, { type TonoChip } from "../ui/Chip"
+import { alertaSiesa } from "../../utils/estadosPedido"
 
 /**
  * Separación de un pedido en bodega, con la pistola QR en una tablet de 10".
@@ -55,6 +56,7 @@ interface PedidoDetalle {
   f200_razon_social_pedido_fact: string
   f431_notas: string | null
   estado: string
+  estado_siesa?: number | null
   direccion_envio: string | null
   ciudad_envio: string | null
   depto_envio: string | null
@@ -456,7 +458,36 @@ export default function PedidoBodegaDetalle() {
     }
   }
 
-  if (!pedido) return <div className="p-8 text-xl text-cmsa-gris">Cargando pedido…</div>
+  // Sin pedido: o está cargando, o la carga falló (se muestra el motivo y se puede reintentar)
+  if (!pedido) {
+    if (!aviso) return <div className="p-8 text-xl text-cmsa-gris">Cargando pedido…</div>
+    return (
+      <div className="flex flex-col items-start gap-4 p-8">
+        <div className="rounded-xl px-5 py-4" style={{ background: ESTADO.errorFondo, color: ESTADO.errorTexto }}>
+          <div className="text-2xl font-bold">{aviso.titulo}</div>
+          <div className="text-lg">{aviso.detalle}</div>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setAviso(null)
+              cargarPedido()
+            }}
+            className="h-14 rounded-xl px-6 text-lg font-bold text-white"
+            style={{ background: AZUL }}
+          >
+            Reintentar
+          </button>
+          <button onClick={() => navigate("/bodega")} className="h-14 rounded-xl border-2 border-cmsa-borde px-6 text-lg font-semibold">
+            Volver a pedidos
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Comercial lo anuló, lo retuvo o lo cumplió en Siesa: no se separa (el servidor tampoco lo deja)
+  const noVigente = alertaSiesa(pedido.estado, pedido.estado_siesa)
 
   const listas = lineas.filter((l) => l.estado === "Lista").length
   const faltan = lineas.length - listas
@@ -497,6 +528,15 @@ export default function PedidoBodegaDetalle() {
       </header>
 
       <div className="flex min-h-0 flex-1 gap-5 px-6 py-5">
+        {noVigente && (
+          <div
+            role="alert"
+            className="fixed left-1/2 top-[84px] z-40 -translate-x-1/2 rounded-xl px-6 py-3 text-xl font-bold shadow-lg"
+            style={{ background: ESTADO.errorFondo, color: ESTADO.errorTexto }}
+          >
+            {noVigente}: no separe este pedido. Avise a comercial; si tiene carretes, quítelos.
+          </div>
+        )}
         <section aria-label="Calibres del pedido" className="flex w-[300px] flex-shrink-0 flex-col gap-3 overflow-auto">
           <div className="etiqueta">
             Calibres · {listas} de {lineas.length} listos
@@ -680,7 +720,7 @@ export default function PedidoBodegaDetalle() {
             if (e.detail === 0 || enCurso > 0) return
             setConfirmarFin(llevanOtro.length > 0 ? "lleva_otro" : "terminar")
           }}
-          disabled={finalizando || enCurso > 0 || lineas.length === 0}
+          disabled={finalizando || enCurso > 0 || lineas.length === 0 || !!noVigente}
           className="h-16 rounded-2xl px-8 text-[22px] font-bold disabled:opacity-60"
           style={faltan > 0 ? { background: CMSA.borde, color: CMSA.tinta } : { background: ESTADO.ok, color: "#FFFFFF" }}
         >
