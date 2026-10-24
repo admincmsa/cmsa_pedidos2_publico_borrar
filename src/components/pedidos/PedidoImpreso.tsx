@@ -94,7 +94,7 @@ export default function PedidoImpreso() {
           <h1>CMSA SAS</h1>
           <p>Nit: 811038173</p>
           <p>CALLE 16 No. 45-72</p>
-          <p className="pv-tel">Tel: 2660502 Fax:<br />001</p>
+          <p className="pv-tel">Tel: 604 2660502</p>
         </div>
 
         <div className="pv-numero">

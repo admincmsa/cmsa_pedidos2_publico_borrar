@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import api from "../../services/api"
 import { User } from "lucide-react"
@@ -6,6 +6,7 @@ import { kg } from "../../bodega/carrete"
 import { CMSA, DISPLAY, ESTADO } from "../../theme/cmsa"
 import { useRefrescoAutomatico } from "../../utils/useRefrescoAutomatico"
 import BarraEstados from "./BarraEstados"
+import { cuentaEl, grupoDe, hoyLocal } from "../../utils/gruposPedido"
 import Chip, { type TonoChip } from "../ui/Chip"
 
 /**
@@ -19,7 +20,8 @@ import Chip, { type TonoChip } from "../ui/Chip"
  * servidor todavía no los manda (versión anterior), la tarjeta sigue sirviendo:
  * muestra el pedido sin la barra.
  *
- * Todos los pedidos de esta lista están por separar, así que no hay filtros. La
+ * Todos los pedidos de esta lista están por separar: no hay filtros ni «Sin
+ * iniciar». Arriba van los tres botones de estado del día (BarraEstados). La
  * lista se refresca sola (useRefrescoAutomatico), sin botón «Actualizar».
  */
 
@@ -42,20 +44,20 @@ interface PedidoResumen {
   direccion_envio: string | null
   ciudad_envio: string | null
   depto_envio: string | null
+  fecha_ingreso?: string | null
+  fecha_remisionado?: string | null
   resumen_cobre?: ResumenCobre
 }
 
-type EstadoTarjeta = "Sin iniciar" | "En separación" | "Listo para terminar"
+type EstadoTarjeta = "En separación" | "Listo para terminar"
 
-// Sin iniciar: nadie ha escaneado. En separación: ya hay carretes. Listo: todos los calibres cerrados.
+// Todo lo de esta lista está en separación; «Listo» cuando todos los calibres quedaron cerrados.
 function estadoDe(p: PedidoResumen): EstadoTarjeta {
   const r = p.resumen_cobre
-  if (!r || r.kg_separados <= 0) return "Sin iniciar"
-  return r.lineas > 0 && r.listas === r.lineas ? "Listo para terminar" : "En separación"
+  return r && r.lineas > 0 && r.listas === r.lineas ? "Listo para terminar" : "En separación"
 }
 
 const COLOR: Record<EstadoTarjeta, { tono: TonoChip; barra: string }> = {
-  "Sin iniciar": { tono: "niebla", barra: CMSA.gris },
   "En separación": { tono: "amarillo", barra: AZUL },
   "Listo para terminar": { tono: "ok", barra: ESTADO.ok },
 }
@@ -67,16 +69,15 @@ export default function PedidoBodegaLista() {
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([])
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fecha, setFecha] = useState(hoyLocal)
 
   const cargar = useCallback(async (silencioso = false) => {
     if (!silencioso) setCargando(true)
     setError(null)
     try {
-      const [ingresados, enSeparacion] = await Promise.all([
-        api.get("/pedidos_listar", { params: { estado: "ingresado" } }),
-        api.get("/pedidos_listar", { params: { estado: "en_separacion" } }),
-      ])
-      setPedidos([...enSeparacion.data, ...ingresados.data])
+      // Todos: los botones de estado cuentan también pendientes y cumplidos.
+      const res = await api.get("/pedidos_listar")
+      setPedidos(res.data)
     } catch {
       setError("No se pudieron cargar los pedidos. Revise la conexión y vuelva a intentar.")
     } finally {
@@ -88,6 +89,15 @@ export default function PedidoBodegaLista() {
     cargar()
   }, [cargar])
   useRefrescoAutomatico(cargar)
+
+  // Los que están en separación primero, después los que nadie ha empezado.
+  const porSeparar = useMemo(
+    () =>
+      pedidos
+        .filter((p) => grupoDe(p) === "por_separar" && cuentaEl(p, fecha))
+        .sort((a, b) => Number(b.estado === "en_separacion") - Number(a.estado === "en_separacion")),
+    [pedidos, fecha],
+  )
 
   const usuario = (() => {
     try {
@@ -114,7 +124,7 @@ export default function PedidoBodegaLista() {
         </div>
       </header>
 
-      <BarraEstados />
+      <BarraEstados pedidos={pedidos} fecha={fecha} onFecha={setFecha} />
 
       <div className="min-h-0 flex-1 overflow-auto px-6 py-5">
         {avisoSeparacion && (
@@ -130,7 +140,7 @@ export default function PedidoBodegaLista() {
         )}
 
         <div className="grid grid-cols-1 content-start gap-4 lg:grid-cols-2">
-          {pedidos.map((p) => {
+          {porSeparar.map((p) => {
             const r = p.resumen_cobre
             const estado = estadoDe(p)
             const color = COLOR[estado]
@@ -188,7 +198,7 @@ export default function PedidoBodegaLista() {
           })}
         </div>
 
-        {!cargando && pedidos.length === 0 && (
+        {!cargando && porSeparar.length === 0 && (
           <p className="py-16 text-center text-xl text-cmsa-gris">No hay pedidos pendientes de separar.</p>
         )}
       </div>

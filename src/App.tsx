@@ -322,10 +322,10 @@ import ProtectedRoute from "./components/ProtectedRoute"
 import { Sidebar } from "./components/layout/Sidebar"
 import Login from "./pages/Login"
 import PedidoComercialLista from "./components/pedidos/PedidoComercialLista"
-import PedidoForm from "./components/pedidos/PedidoForm"
 import PedidoBodegaLista from "./components/pedidos/PedidoBodegaLista"
 import PedidoBodegaDetalle from "./components/pedidos/PedidoBodegaDetalle"
 import PedidoComercialDetalle from "./components/pedidos/PedidoComercialDetalle"
+import PedidoImpreso from "./components/pedidos/PedidoImpreso"
 import InventarioPage from "./pages/InventarioPage"
 import UsuariosPage from "./pages/UsuariosPage"
 import CambiarClavePage from "./pages/CambiarClavePage"
@@ -367,14 +367,8 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/comercial/nuevo"
-            element={
-              <ProtectedRoute rolesPermitidos={["admin", "comercial"]}>
-                <Layout><PedidoForm /></Layout>
-              </ProtectedRoute>
-            }
-          />
+          {/* Sin «Nuevo pedido»: los pedidos entran solos desde Siesa (importación cada 10 min) */}
+          <Route path="/comercial/nuevo" element={<Navigate to="/comercial" replace />} />
 
           <Route
             path="/bodega"
@@ -397,6 +391,15 @@ export default function App() {
             element={
               <ProtectedRoute rolesPermitidos={["admin", "comercial"]}>
                 <Layout><PedidoComercialDetalle /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          {/* Hoja A4 del pedido, sin menú: para ver e imprimir como en papel */}
+          <Route
+            path="/comercial/detalle/:pedidoId/impreso"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin", "comercial"]}>
+                <PedidoImpreso />
               </ProtectedRoute>
             }
           />

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import api, { mensajeError } from "../../services/api"
 import { estadoPedido, alertaSiesa } from "../../utils/estadosPedido"
 import { awgDeItem, kg } from "../../bodega/carrete"
-import { Trash2, ChevronLeft, AlertTriangle } from "lucide-react"
+import { Trash2, ChevronLeft, AlertTriangle, FileText } from "lucide-react"
 import { CMSA, ESTADO } from "../../theme/cmsa"
 import Chip from "../ui/Chip"
 import Boton from "../ui/Boton"
@@ -110,6 +110,10 @@ export default function PedidoComercialDetalle() {
       <div className="flex items-center gap-4">
         <Boton variante="secundario" onClick={() => navigate("/comercial")} className="h-11 px-4">
           <ChevronLeft size={18} /> Pedidos
+        </Boton>
+        {/* El pedido completo como en papel (formato de Siesa/CRM), con todas las familias */}
+        <Boton variante="secundario" onClick={() => navigate(`/comercial/detalle/${pedido.id}/impreso`)} className="ml-auto h-11 px-4">
+          <FileText size={18} /> Ver pedido impreso
         </Boton>
       </div>
 

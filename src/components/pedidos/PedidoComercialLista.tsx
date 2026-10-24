@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState, type MouseEvent } from "react"
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import api, { mensajeError } from "../../services/api"
-import { PlusCircle, Truck, Trash2, AlertTriangle, Lock } from "lucide-react"
+import { Truck, Trash2, AlertTriangle, Lock, Eye, RefreshCcwDot } from "lucide-react"
 import { estadoPedido, alertaSiesa } from "../../utils/estadosPedido"
 import { useRefrescoAutomatico } from "../../utils/useRefrescoAutomatico"
 import { kg } from "../../bodega/carrete"
 import BarraEstados from "./BarraEstados"
+import { cuentaEl, grupoDe, hoyLocal, type Grupo } from "../../utils/gruposPedido"
 import Chip from "../ui/Chip"
 import Boton from "../ui/Boton"
 import Aviso, { type TipoAviso } from "../ui/Aviso"
@@ -16,7 +17,24 @@ import Dialogo from "../ui/Dialogo"
  * zebra) con lo que comercial decide desde aquí: comprometer lo separado y
  * remisionar. Las confirmaciones y los resultados se muestran en la propia
  * pantalla, no con `confirm()` ni `alert()`, que la tablet no muestra bien.
+ *
+ * No hay «Nuevo pedido»: el backend trae solo de Siesa, cada 10 minutos, los
+ * pedidos comprometidos que llevan cobre (/pedidos_importacion dice cuándo).
  */
+
+interface Importacion {
+  activa: boolean
+  cada_min: number
+  ultima_revision: string | null
+  ultimo_resultado: { importados: number[]; errores: string[] } | null
+}
+
+// La revisión llega en UTC sin zona; se muestra en la hora de la tablet.
+function horaLocal(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`)
+  return Number.isNaN(d.getTime()) ? null : d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })
+}
 
 interface PedidoResumen {
   id: number
@@ -26,6 +44,8 @@ interface PedidoResumen {
   estado: string
   estado_siesa: number | null
   remision: string | null
+  fecha_ingreso?: string | null
+  fecha_remisionado?: string | null
   total_lineas: number
   resumen_cobre?: { calibres: number[]; kg_pedidos: number; kg_separados: number; lineas: number; listas: number }
 }
@@ -64,12 +84,20 @@ export default function PedidoComercialLista() {
   const [accion, setAccion] = useState<Accion | null>(null)
   const [ocupado, setOcupado] = useState<number | null>(null)
   const [aviso, setAviso] = useState<{ tipo: TipoAviso; titulo: string; detalle?: string } | null>(null)
+  // Lo que cuenta es el día: los abiertos hasta esa fecha y los cumplidos de ese día.
+  const [fecha, setFecha] = useState(hoyLocal)
+  const [grupo, setGrupo] = useState<Grupo | null>(null)
+  const [importacion, setImportacion] = useState<Importacion | null>(null)
 
   const cargarPedidos = useCallback(async (silencioso = false) => {
     if (!silencioso) setCargando(true)
     try {
-      const res = await api.get("/pedidos_listar")
+      const [res, imp] = await Promise.all([
+        api.get("/pedidos_listar"),
+        api.get("/pedidos_importacion").catch(() => null),
+      ])
       setPedidos(res.data)
+      if (imp) setImportacion(imp.data)
     } catch (err) {
       console.error(err)
       setAviso({ tipo: "error", titulo: "No se pudieron cargar los pedidos", detalle: "Revise la conexión con el servidor." })
@@ -82,6 +110,11 @@ export default function PedidoComercialLista() {
     cargarPedidos()
   }, [cargarPedidos])
   useRefrescoAutomatico(cargarPedidos)
+
+  const visibles = useMemo(
+    () => pedidos.filter((p) => cuentaEl(p, fecha) && (!grupo || grupoDe(p) === grupo)),
+    [pedidos, fecha, grupo],
+  )
 
   // Comercial vuelve a comprometer con lo separado: la app deja en Siesa los carretes
   // exactos y libera lo que comercial había comprometido de más (el 131512 reemplaza
@@ -118,7 +151,7 @@ export default function PedidoComercialLista() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <BarraEstados />
+      <BarraEstados pedidos={pedidos} fecha={fecha} onFecha={setFecha} seleccionado={grupo} onSeleccionar={setGrupo} />
 
       <div className="flex flex-col gap-4 p-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -128,9 +161,17 @@ export default function PedidoComercialLista() {
               Comercial compromete lo separado por bodega y remisiona.
             </p>
           </div>
-          <Boton onClick={() => navigate("/comercial/nuevo")}>
-            <PlusCircle size={18} /> Nuevo pedido
-          </Boton>
+          {importacion && (
+            <div className="flex items-center gap-2 text-[14px] text-cmsa-gris" title="Los pedidos comprometidos en Siesa que llevan cobre entran solos">
+              <RefreshCcwDot size={16} />
+              {importacion.activa
+                ? `Entran solos de Siesa cada ${importacion.cada_min} min · última revisión ${horaLocal(importacion.ultima_revision) ?? "—"}`
+                : "La importación automática de Siesa está apagada"}
+              {(importacion.ultimo_resultado?.errores.length ?? 0) > 0 && (
+                <span className="font-semibold text-[#8A1B12]">· la última revisión falló</span>
+              )}
+            </div>
+          )}
         </div>
 
         {aviso && <Aviso {...aviso} onCerrar={() => setAviso(null)} />}
@@ -149,7 +190,7 @@ export default function PedidoComercialLista() {
               </tr>
             </thead>
             <tbody>
-              {pedidos.map((p) => {
+              {visibles.map((p) => {
                 const estado = estadoPedido(p.estado)
                 const alerta = alertaSiesa(p.estado, p.estado_siesa)
                 const r = p.resumen_cobre
@@ -162,8 +203,11 @@ export default function PedidoComercialLista() {
                       <div className="mt-0.5 text-[13px] text-cmsa-gris">{p.f430_id_fecha || "—"}</div>
                     </td>
                     <td>
-                      <div className="max-w-[230px] truncate font-semibold" title={p.f200_razon_social_pedido_fact}>
-                        {p.f200_razon_social_pedido_fact}
+                      <div className="flex items-center gap-1.5">
+                        <span className="max-w-[230px] truncate font-semibold" title={p.f200_razon_social_pedido_fact}>
+                          {p.f200_razon_social_pedido_fact}
+                        </span>
+                        <Eye size={15} className="shrink-0 text-cmsa-azul" aria-hidden="true" />
                       </div>
                     </td>
                     <td className="whitespace-nowrap">{calibres.length > 0 ? `AWG ${calibres.join(", ")}` : "—"}</td>
@@ -227,10 +271,12 @@ export default function PedidoComercialLista() {
                   </tr>
                 )
               })}
-              {!cargando && pedidos.length === 0 && (
+              {!cargando && visibles.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-cmsa-gris">
-                    No hay pedidos registrados. Agregue uno con «Nuevo pedido».
+                    {pedidos.length === 0
+                      ? "No hay pedidos todavía. Los comprometidos en Siesa que llevan cobre aparecen aquí solos."
+                      : "No hay pedidos en este filtro para ese día."}
                   </td>
                 </tr>
               )}
