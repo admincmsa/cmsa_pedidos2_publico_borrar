@@ -1,22 +1,16 @@
+import { ESTADO_VISIBLE, type EstadoVisible } from "./estadosPedido"
+
 /**
- * Grupos de estado del día para los botones de BarraEstados: Por separar,
- * Pendientes y Cumplidos, y si un pedido cuenta en una fecha.
+ * Los tres estados del pedido para los botones de BarraEstados (los mismos de
+ * los chips: Creado, Separado, Cumplido) y si un pedido cuenta en una fecha.
  */
 
-export type Grupo = "por_separar" | "pendientes" | "cumplidos"
+export type Grupo = EstadoVisible
 
 export interface PedidoConFechas {
   estado: string
   fecha_ingreso?: string | null
   fecha_remisionado?: string | null
-}
-
-const GRUPO_DE_ESTADO: Record<string, Grupo> = {
-  ingresado: "por_separar",
-  en_separacion: "por_separar",
-  separado: "pendientes",
-  comprometido: "pendientes",
-  remisionado: "cumplidos",
 }
 
 /** AAAA-MM-DD de hoy en la hora de la tablet. */
@@ -38,13 +32,17 @@ function diaDe(iso: string | null | undefined): string | null {
 }
 
 export function grupoDe(p: PedidoConFechas): Grupo | null {
-  return GRUPO_DE_ESTADO[p.estado] ?? null
+  return ESTADO_VISIBLE[p.estado] ?? null
 }
 
-/** ¿El pedido cuenta en su grupo el día `fecha`? */
+/**
+ * ¿El pedido cuenta el día `fecha`? Creado y Separado: los abiertos que
+ * entraron hasta ese día (lo de ayer sin terminar sigue contando). Cumplido:
+ * los remisionados ese día.
+ */
 export function cuentaEl(p: PedidoConFechas, fecha: string): boolean {
   const grupo = grupoDe(p)
-  if (grupo === "cumplidos") return diaDe(p.fecha_remisionado) === fecha
+  if (grupo === "cumplido") return diaDe(p.fecha_remisionado) === fecha
   if (!grupo) return false
   const ingreso = diaDe(p.fecha_ingreso)
   return ingreso === null || ingreso <= fecha

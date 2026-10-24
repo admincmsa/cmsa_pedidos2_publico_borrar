@@ -1,23 +1,24 @@
 import { CalendarDays, PackageCheck, Truck, Warehouse, type LucideIcon } from "lucide-react"
 import { cuentaEl, grupoDe, hoyLocal, type Grupo, type PedidoConFechas } from "../../utils/gruposPedido"
+import { ESTADOS } from "../../utils/estadosPedido"
 
 /**
- * Los tres botones de estado del día, como las tarjetas del Dashboard pero
- * pequeños para la tablet de 10": Por separar, Pendientes (separados, falta
- * remisionar) y Cumplidos. Con un filtro de fecha: lo que cuenta es hoy.
+ * Los tres botones de estado, como las tarjetas del Dashboard pero pequeños
+ * para la tablet de 10": Creado, Separado y Cumplido, los mismos nombres y
+ * colores de los chips. Con un filtro de fecha: lo que cuenta es hoy.
  *
- * - Por separar y Pendientes: los pedidos abiertos que entraron hasta ese día
- *   (lo de ayer sin separar sigue contando).
- * - Cumplidos: los remisionados ese día.
+ * - Creado y Separado: los pedidos abiertos que entraron hasta ese día (lo de
+ *   ayer sin terminar sigue contando).
+ * - Cumplido: los remisionados ese día.
  *
  * Con `onSeleccionar` cada tarjeta es un botón que filtra la lista; sin él
  * solo muestra el conteo.
  */
 
-const TARJETAS: { grupo: Grupo; texto: string; icono: LucideIcon; color: string }[] = [
-  { grupo: "por_separar", texto: "Por separar", icono: Warehouse, color: "bg-cmsa-amarillo text-cmsa-tinta" },
-  { grupo: "pendientes", texto: "Pendientes", icono: PackageCheck, color: "bg-cmsa-azul text-white" },
-  { grupo: "cumplidos", texto: "Cumplidos", icono: Truck, color: "bg-[#DDF3E6] text-[#0B5E34]" },
+const TARJETAS: { grupo: Grupo; icono: LucideIcon; color: string }[] = [
+  { grupo: "creado", icono: Warehouse, color: "bg-cmsa-amarillo text-cmsa-tinta" },
+  { grupo: "separado", icono: PackageCheck, color: "bg-cmsa-azul text-white" },
+  { grupo: "cumplido", icono: Truck, color: "bg-[#DDF3E6] text-[#0B5E34]" },
 ]
 
 export default function BarraEstados({
@@ -33,7 +34,7 @@ export default function BarraEstados({
   seleccionado?: Grupo | null
   onSeleccionar?: (grupo: Grupo | null) => void
 }) {
-  const conteo: Record<Grupo, number> = { por_separar: 0, pendientes: 0, cumplidos: 0 }
+  const conteo: Record<Grupo, number> = { creado: 0, separado: 0, cumplido: 0 }
   for (const p of pedidos) {
     const grupo = grupoDe(p)
     if (grupo && cuentaEl(p, fecha)) conteo[grupo] += 1
@@ -42,7 +43,7 @@ export default function BarraEstados({
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-cmsa-borde bg-white px-6 py-2">
-      {TARJETAS.map(({ grupo, texto, icono: Icono, color }) => {
+      {TARJETAS.map(({ grupo, icono: Icono, color }) => {
         const activo = seleccionado === grupo
         const contenido = (
           <>
@@ -50,7 +51,7 @@ export default function BarraEstados({
               <Icono size={16} />
             </span>
             <span className="display text-[22px] leading-none text-cmsa-tinta">{conteo[grupo]}</span>
-            <span className="text-[12px] font-semibold uppercase tracking-[0.1em] text-cmsa-gris">{texto}</span>
+            <span className="text-[12px] font-semibold uppercase tracking-[0.1em] text-cmsa-gris">{ESTADOS[grupo].texto}</span>
           </>
         )
         const clase = `flex h-11 items-center gap-2 rounded-lg border bg-white px-3 ${

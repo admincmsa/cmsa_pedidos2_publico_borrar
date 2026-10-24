@@ -7,7 +7,6 @@ import { CMSA, DISPLAY, ESTADO } from "../../theme/cmsa"
 import { useRefrescoAutomatico } from "../../utils/useRefrescoAutomatico"
 import BarraEstados from "./BarraEstados"
 import { cuentaEl, grupoDe, hoyLocal } from "../../utils/gruposPedido"
-import Chip, { type TonoChip } from "../ui/Chip"
 
 /**
  * Pedidos por separar, para la tablet de bodega.
@@ -20,8 +19,9 @@ import Chip, { type TonoChip } from "../ui/Chip"
  * servidor todavía no los manda (versión anterior), la tarjeta sigue sirviendo:
  * muestra el pedido sin la barra.
  *
- * Todos los pedidos de esta lista están por separar: no hay filtros ni «Sin
- * iniciar». Arriba van los tres botones de estado del día (BarraEstados). La
+ * Todos los pedidos de esta lista están en estado Creado (por separar): la
+ * tarjeta no lleva etiqueta de estado; el avance lo dicen la barra y los
+ * kilos. Arriba van los tres botones de estado del día (BarraEstados). La
  * lista se refresca sola (useRefrescoAutomatico), sin botón «Actualizar».
  */
 
@@ -49,17 +49,10 @@ interface PedidoResumen {
   resumen_cobre?: ResumenCobre
 }
 
-type EstadoTarjeta = "En separación" | "Listo para terminar"
-
-// Todo lo de esta lista está en separación; «Listo» cuando todos los calibres quedaron cerrados.
-function estadoDe(p: PedidoResumen): EstadoTarjeta {
+// La barra se pone verde cuando a ningún calibre le cabe otro carrete.
+function barraDe(p: PedidoResumen): string {
   const r = p.resumen_cobre
-  return r && r.lineas > 0 && r.listas === r.lineas ? "Listo para terminar" : "En separación"
-}
-
-const COLOR: Record<EstadoTarjeta, { tono: TonoChip; barra: string }> = {
-  "En separación": { tono: "amarillo", barra: AZUL },
-  "Listo para terminar": { tono: "ok", barra: ESTADO.ok },
+  return r && r.lineas > 0 && r.listas === r.lineas ? ESTADO.ok : AZUL
 }
 
 export default function PedidoBodegaLista() {
@@ -94,7 +87,7 @@ export default function PedidoBodegaLista() {
   const porSeparar = useMemo(
     () =>
       pedidos
-        .filter((p) => grupoDe(p) === "por_separar" && cuentaEl(p, fecha))
+        .filter((p) => grupoDe(p) === "creado" && cuentaEl(p, fecha))
         .sort((a, b) => Number(b.estado === "en_separacion") - Number(a.estado === "en_separacion")),
     [pedidos, fecha],
   )
@@ -142,8 +135,6 @@ export default function PedidoBodegaLista() {
         <div className="grid grid-cols-1 content-start gap-4 lg:grid-cols-2">
           {porSeparar.map((p) => {
             const r = p.resumen_cobre
-            const estado = estadoDe(p)
-            const color = COLOR[estado]
             const pct = r && r.kg_pedidos > 0 ? Math.min(100, (r.kg_separados / r.kg_pedidos) * 100) : 0
             const destino = [p.direccion_envio, [p.ciudad_envio, p.depto_envio].filter(Boolean).join(", ")]
               .filter(Boolean)
@@ -155,12 +146,9 @@ export default function PedidoBodegaLista() {
                 onClick={() => navigate(`/bodega/${p.id}`)}
                 className="flex flex-col gap-3 rounded-2xl bg-white px-5 py-4 text-left shadow-sm"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[34px] font-bold leading-none" style={DISPLAY}>
-                    {p.f430_consec_docto}
-                  </span>
-                  <Chip tono={color.tono} grande>{estado}</Chip>
-                </div>
+                <span className="text-[34px] font-bold leading-none" style={DISPLAY}>
+                  {p.f430_consec_docto}
+                </span>
 
                 <div className="truncate text-lg font-semibold">{p.f200_razon_social_pedido_fact}</div>
 
@@ -178,7 +166,7 @@ export default function PedidoBodegaLista() {
                   <>
                     <div className="flex items-center gap-3">
                       <div className="h-3.5 flex-1 overflow-hidden rounded-full bg-cmsa-borde">
-                        <div className="h-full" style={{ width: `${pct}%`, background: color.barra }} />
+                        <div className="h-full" style={{ width: `${pct}%`, background: barraDe(p) }} />
                       </div>
                       <span className="whitespace-nowrap text-lg font-bold">
                         {kg(r.kg_separados)} / {kg(r.kg_pedidos)} kg
