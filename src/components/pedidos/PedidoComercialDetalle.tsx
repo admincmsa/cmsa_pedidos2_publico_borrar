@@ -187,10 +187,11 @@ export default function PedidoComercialDetalle() {
                   <table className="tabla-cmsa">
                     <thead>
                       <tr>
-                        <th>Carrete</th>
-                        <th>AWG</th>
-                        <th>Tipo</th>
-                        <th className="!text-right">Peso</th>
+                        {/* El peso junto al carrete: es lo que se compara con lo pedido */}
+                        <th className="w-36">Carrete</th>
+                        <th className="w-32 !text-right">Peso</th>
+                        <th className="w-20 !text-center">AWG</th>
+                        <th className="w-48">Tipo</th>
                         <th>Escaneó</th>
                         {!bloqueado && <th className="w-14"><span className="sr-only">Quitar</span></th>}
                       </tr>
@@ -199,9 +200,9 @@ export default function PedidoComercialDetalle() {
                       {d.seriales.map((s) => (
                         <tr key={s.id}>
                           <td className="font-semibold tabular-nums">{s.serial}</td>
-                          <td>{s.awg}</td>
-                          <td className="text-cmsa-gris">{s.tipo_carrete}</td>
                           <td className="text-right font-semibold tabular-nums">{kg(s.peso_kg)} kg</td>
+                          <td className="text-center">{s.awg}</td>
+                          <td className="text-cmsa-gris">{s.tipo_carrete}</td>
                           <td className="text-cmsa-gris">{s.usuario || "—"}</td>
                           {!bloqueado && (
                             <td className="text-center">
