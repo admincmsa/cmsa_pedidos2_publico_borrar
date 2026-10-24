@@ -47,7 +47,6 @@ interface LineaSiesa {
 interface Renglon {
   linea: LineaSiesa
   comprometida: number | undefined
-  ubicacion: string
   lote: string
 }
 
@@ -55,8 +54,8 @@ interface Renglon {
 function renglones(lineas: LineaSiesa[]): Renglon[] {
   return lineas.flatMap((linea) =>
     linea.compromisos && linea.compromisos.length > 0
-      ? linea.compromisos.map((c) => ({ linea, comprometida: c.cantidad, ubicacion: c.ubicacion, lote: c.lote }))
-      : [{ linea, comprometida: linea.f431_cant_comprometida_base, ubicacion: "", lote: "" }],
+      ? linea.compromisos.map((c) => ({ linea, comprometida: c.cantidad, lote: c.lote }))
+      : [{ linea, comprometida: linea.f431_cant_comprometida_base, lote: "" }],
   )
 }
 
@@ -216,7 +215,7 @@ export default function PedidoImpreso() {
             </tr>
           </thead>
           <tbody>
-            {filas.map(({ linea: l, comprometida, ubicacion, lote }, i) => (
+            {filas.map(({ linea: l, comprometida, lote }, i) => (
               <tr key={`${l.f120_id}-${lote}-${i}`}>
                 <td className="pv-desc">
                   <div>{String(l.f120_id).padStart(8, "0")} {l.f120_descripcion}</div>
@@ -224,7 +223,8 @@ export default function PedidoImpreso() {
                 <td className="pv-um">{l.f431_id_unidad_medida ?? ""}</td>
                 <td>{cantidad(l.f431_cant_pedida_base)}</td>
                 <td>{cantidad(comprometida)}</td>
-                <td>{ubicacion}</td>
+                {/* Ubicación va vacía, como en los pedidos que se imprimen a mano */}
+                <td></td>
                 <td>{lote}</td>
                 <td>{pesos(l.f431_precio_unitario_base ?? 0)}</td>
               </tr>
