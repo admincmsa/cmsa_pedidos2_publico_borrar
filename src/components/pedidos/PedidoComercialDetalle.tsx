@@ -148,7 +148,10 @@ export default function PedidoComercialDetalle() {
         const pedida = Number(d.f431_cant_pedida_base || 0)
         const separado = Number(d.peso_acumulado || 0)
         const pct = pedida > 0 ? Math.min(100, (separado / pedida) * 100) : 0
-        const completa = d.estado_linea === "separado"
+        // Bodega ya terminó el pedido: la línea con carretes queda separada aunque no llegue a lo pedido
+        const completa =
+          d.estado_linea === "separado" ||
+          (!["ingresado", "en_separacion"].includes(pedido.estado) && d.seriales.length > 0)
 
         return (
           <div key={d.id} className="flex flex-col gap-3 rounded-xl border border-cmsa-borde bg-white p-5">
