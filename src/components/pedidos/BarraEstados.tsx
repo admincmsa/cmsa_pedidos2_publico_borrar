@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import api from "../../services/api"
 import { ESTADOS, type EstadoVisible } from "../../utils/estadosPedido"
 import { useRefrescoAutomatico } from "../../utils/useRefrescoAutomatico"
@@ -35,10 +35,8 @@ export default function BarraEstados() {
     }
   }, [])
 
-  useEffect(() => {
-    cargar()
-  }, [cargar])
-  useRefrescoAutomatico(cargar)
+  // Primera carga y refresco periódico, en el mismo sitio.
+  useRefrescoAutomatico(cargar, 20000, true)
 
   if (!resumen) return null
 

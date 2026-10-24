@@ -8,7 +8,12 @@ import { useEffect, useRef } from "react"
  * `cargar` recibe `true` en los refrescos automáticos, para que la pantalla no
  * muestre «Cargando…» ni borre lo que ya tiene mientras llega la respuesta.
  */
-export function useRefrescoAutomatico(cargar: (silencioso: boolean) => unknown, cadaMs = 20000) {
+export function useRefrescoAutomatico(
+  cargar: (silencioso: boolean) => unknown,
+  cadaMs = 20000,
+  /** true: también hace la primera carga al montar (sin «silencioso»). */
+  alMontar = false,
+) {
   // La última versión de `cargar`, sin reiniciar el intervalo cada vez que cambia.
   const ultimo = useRef(cargar)
   useEffect(() => {
@@ -16,6 +21,7 @@ export function useRefrescoAutomatico(cargar: (silencioso: boolean) => unknown, 
   }, [cargar])
 
   useEffect(() => {
+    if (alMontar) ultimo.current(false)
     const refrescar = () => {
       if (document.visibilityState === "visible") ultimo.current(true)
     }
@@ -27,5 +33,5 @@ export function useRefrescoAutomatico(cargar: (silencioso: boolean) => unknown, 
       document.removeEventListener("visibilitychange", refrescar)
       window.removeEventListener("focus", refrescar)
     }
-  }, [cadaMs])
+  }, [cadaMs, alMontar])
 }
