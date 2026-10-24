@@ -175,7 +175,7 @@ export default function PedidoComercialLista() {
                       <div className="mt-0.5 text-[13px] text-cmsa-gris">{p.f430_id_fecha || "—"}</div>
                     </td>
                     <td className="min-w-[280px] font-semibold">{p.f200_razon_social_pedido_fact}</td>
-                    <td className="whitespace-nowrap">{calibres.length > 0 ? `AWG ${calibres.join(", ")}` : "—"}</td>
+                    <td className="whitespace-nowrap">{calibres.length > 0 ? `AWG ${calibres.join(" - ")}` : "—"}</td>
                     <td className="whitespace-nowrap text-right tabular-nums">
                       {r && r.kg_pedidos > 0 ? (
                         <>

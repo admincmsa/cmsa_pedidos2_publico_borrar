@@ -164,7 +164,7 @@ export default function PedidoBodegaLista() {
                 )}
 
                 {r && r.calibres.length > 0 && (
-                  <div className="text-[15px] text-cmsa-gris">AWG {r.calibres.join(", ")}</div>
+                  <div className="text-[15px] text-cmsa-gris">AWG {r.calibres.join(" - ")}</div>
                 )}
 
                 {r ? (

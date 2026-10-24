@@ -190,7 +190,7 @@ export default function PedidoComercialDetalle() {
                         <th>Carrete</th>
                         <th>AWG</th>
                         <th>Tipo</th>
-                        <th className="text-right">Peso</th>
+                        <th className="!text-right">Peso</th>
                         <th>Escaneó</th>
                         {!bloqueado && <th className="w-14"><span className="sr-only">Quitar</span></th>}
                       </tr>
