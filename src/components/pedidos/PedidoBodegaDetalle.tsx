@@ -566,7 +566,7 @@ export default function PedidoBodegaDetalle() {
             </div>
 
             {actual && actual.seriales.length === 0 && (
-              <div className="py-4 text-lg text-cmsa-gris">Todavía no hay carretes en esta línea.</div>
+              <div className="py-4 text-lg text-cmsa-gris">Todavía no hay carretes en este calibre.</div>
             )}
 
             {actual?.seriales.map((s) => (
@@ -614,7 +614,7 @@ export default function PedidoBodegaDetalle() {
       {porQuitar && (
         <Dialogo
           titulo={`¿Quitar el carrete ${porQuitar.serial}?`}
-          detalle={`Se devuelven ${kg(porQuitar.peso_kg)} kg a la línea. El carrete vuelve a quedar disponible.`}
+          detalle={`Se devuelven ${kg(porQuitar.peso_kg)} kg a este calibre. El carrete vuelve a quedar disponible.`}
           confirmar="Quitar"
           onConfirmar={quitar}
           onCancelar={() => {

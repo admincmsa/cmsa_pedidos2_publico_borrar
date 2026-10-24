@@ -229,7 +229,7 @@ export default function PedidoComercialDetalle() {
                     </tbody>
                   </table>
                 ) : (
-                  <p className="text-[15px] text-cmsa-gris">Bodega todavía no ha escaneado carretes en esta línea.</p>
+                  <p className="text-[15px] text-cmsa-gris">Bodega todavía no ha escaneado carretes en este calibre.</p>
                 )}
               </>
             )}
@@ -248,7 +248,7 @@ export default function PedidoComercialDetalle() {
       {porQuitar && (
         <Dialogo
           titulo={`¿Quitar el carrete ${porQuitar.serial} del pedido?`}
-          detalle={`Se devuelven ${kg(porQuitar.peso_kg)} kg a la línea y el carrete vuelve a quedar disponible. Si el pedido ya estaba separado, vuelve a bodega.`}
+          detalle={`Se devuelven ${kg(porQuitar.peso_kg)} kg a este calibre y el carrete vuelve a quedar disponible. Si el pedido ya estaba separado, vuelve a bodega.`}
           confirmar="Quitar"
           peligro
           ocupado={quitando}
