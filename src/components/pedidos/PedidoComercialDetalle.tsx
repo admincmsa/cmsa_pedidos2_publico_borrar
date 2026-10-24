@@ -101,6 +101,8 @@ export default function PedidoComercialDetalle() {
   const estado = estadoPedido(pedido.estado)
   const alerta = alertaSiesa(pedido.estado, pedido.estado_siesa)
   const bloqueado = pedido.estado === "comprometido" || pedido.estado === "remisionado"
+  // Carretes de todo el pedido (todas las líneas de cobre)
+  const totalCarretes = pedido.detalle.reduce((n, d) => n + d.seriales.length, 0)
   const destino = [pedido.direccion_envio, [pedido.ciudad_envio, pedido.depto_envio].filter(Boolean).join(", ")]
     .filter(Boolean)
     .join(" · ")
@@ -120,7 +122,12 @@ export default function PedidoComercialDetalle() {
       <div className="flex flex-col gap-3 rounded-xl border border-cmsa-borde bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="display text-[32px] text-cmsa-azul">Pedido {pedido.f430_consec_docto}</h1>
+            <div className="flex flex-wrap items-baseline gap-3">
+              <h1 className="display text-[32px] text-cmsa-azul">Pedido {pedido.f430_consec_docto}</h1>
+              <span className="text-xl font-semibold text-cmsa-tinta">
+                · {totalCarretes} {totalCarretes === 1 ? "carrete" : "carretes"}
+              </span>
+            </div>
             <div className="mt-1.5 text-lg font-semibold">{pedido.f200_razon_social_pedido_fact}</div>
             {destino && (
               <div className="text-[15px] text-cmsa-gris">
