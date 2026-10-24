@@ -183,8 +183,10 @@ export default function PedidoComercialLista() {
                 <th>Pedido</th>
                 <th>Cliente</th>
                 <th>Calibres</th>
-                <th className="text-right">Kilos</th>
+                {/* !: .tabla-cmsa th pone text-left; el encabezado va alineado con sus valores */}
+                <th className="!text-right">Kilos</th>
                 <th>Estado</th>
+                <th className="w-14 !text-center">Ver</th>
                 <th>Acción</th>
                 <th className="w-12"><span className="sr-only">Eliminar</span></th>
               </tr>
@@ -202,14 +204,7 @@ export default function PedidoComercialLista() {
                       <div className="display text-[20px] text-cmsa-tinta">{p.f430_consec_docto}</div>
                       <div className="mt-0.5 text-[13px] text-cmsa-gris">{p.f430_id_fecha || "—"}</div>
                     </td>
-                    <td>
-                      <div className="flex items-center gap-1.5">
-                        <span className="max-w-[230px] truncate font-semibold" title={p.f200_razon_social_pedido_fact}>
-                          {p.f200_razon_social_pedido_fact}
-                        </span>
-                        <Eye size={15} className="shrink-0 text-cmsa-azul" aria-hidden="true" />
-                      </div>
-                    </td>
+                    <td className="min-w-[280px] font-semibold">{p.f200_razon_social_pedido_fact}</td>
                     <td className="whitespace-nowrap">{calibres.length > 0 ? `AWG ${calibres.join(", ")}` : "—"}</td>
                     <td className="whitespace-nowrap text-right tabular-nums">
                       {r && r.kg_pedidos > 0 ? (
@@ -231,6 +226,10 @@ export default function PedidoComercialLista() {
                           <AlertTriangle size={13} /> {alerta}
                         </div>
                       )}
+                    </td>
+                    {/* La fila entera abre el pedido; el ojo lo indica */}
+                    <td className="text-center">
+                      <Eye size={18} className="inline text-cmsa-azul" aria-label="Ver el pedido" />
                     </td>
                     <td>
                       {p.estado === "separado" && (
@@ -273,7 +272,7 @@ export default function PedidoComercialLista() {
               })}
               {!cargando && visibles.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-cmsa-gris">
+                  <td colSpan={8} className="py-10 text-center text-cmsa-gris">
                     {pedidos.length === 0
                       ? "No hay pedidos todavía. Los comprometidos en Siesa que llevan cobre aparecen aquí solos."
                       : "No hay pedidos en este filtro para ese día."}

@@ -397,19 +397,19 @@ export default function PedidoBodegaDetalle() {
         >
           <ChevronLeft size={20} /> Pedidos
         </button>
+        {/* Pedido y cliente en la misma línea; la dirección de despacho, sola debajo */}
         <div className="min-w-0 flex-1">
-          <div className="text-3xl font-bold leading-none" style={DISPLAY}>
-            Pedido {pedido.f430_consec_docto}
+          <div className="flex min-w-0 items-baseline gap-3">
+            <span className="shrink-0 text-3xl font-bold leading-none" style={DISPLAY}>
+              Pedido {pedido.f430_consec_docto}
+            </span>
+            <span className="truncate text-xl font-semibold">{pedido.f200_razon_social_pedido_fact}</span>
           </div>
-          <div className="truncate text-base opacity-90">
-            {pedido.f200_razon_social_pedido_fact}
-            {destinoEnvio && (
-              <>
-                {" · "}
-                <b>Despachar a:</b> {destinoEnvio}
-              </>
-            )}
-          </div>
+          {destinoEnvio && (
+            <div className="truncate text-base opacity-90">
+              <b>Despachar a:</b> {destinoEnvio}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 text-base">
           <User size={22} />
