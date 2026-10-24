@@ -366,13 +366,18 @@ export default function PedidoBodegaDetalle() {
     setConfirmarFin(false)
     setFinalizando(true)
     try {
-      // Bodega termina; comercial compromete en Siesa lo separado.
-      await api.put(`/pedido_finalizar_separacion/${pedidoId}`)
-      navigate("/bodega", { state: { aviso: `Pedido ${pedido?.f430_consec_docto} separado.` } })
+      // Terminar compromete en Siesa lo separado (no hay botón Comprometer).
+      const res = await api.put(`/pedido_finalizar_separacion/${pedidoId}`)
+      const numero = pedido?.f430_consec_docto
+      const texto = res.data?.simulacion
+        ? `Pedido ${numero} separado. Simulación: no se escribió en Siesa.`
+        : `Pedido ${numero} separado y comprometido en Siesa.`
+      navigate("/bodega", { state: { aviso: texto } })
     } catch (err) {
+      // Siesa no lo aceptó: el pedido sigue en bodega para quitar o cambiar carretes.
       setAviso({
         tipo: "error",
-        titulo: "No se pudo terminar la separación",
+        titulo: "Siesa no aceptó el pedido",
         detalle: mensajeError(err, "Intente otra vez."),
       })
     } finally {
@@ -642,7 +647,7 @@ export default function PedidoBodegaDetalle() {
       {confirmarFin && (
         <Dialogo
           titulo={`Faltan ${faltan} ${faltan === 1 ? "calibre" : "calibres"} por completar`}
-          detalle="El pedido pasa a comercial con lo que se logró separar; el cliente aprueba la diferencia antes de la remisión. ¿Terminar de todas formas?"
+          detalle="Se compromete en Siesa lo que se logró separar; el cliente aprueba la diferencia antes de la remisión. ¿Terminar de todas formas?"
           confirmar="Terminar así"
           onConfirmar={finalizar}
           onCancelar={() => {

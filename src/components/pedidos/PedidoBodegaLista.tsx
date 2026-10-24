@@ -5,6 +5,7 @@ import { User } from "lucide-react"
 import { kg } from "../../bodega/carrete"
 import { CMSA, DISPLAY, ESTADO } from "../../theme/cmsa"
 import { useRefrescoAutomatico } from "../../utils/useRefrescoAutomatico"
+import Chip from "../ui/Chip"
 import BarraEstados from "./BarraEstados"
 import { cuentaEl, grupoDe, hoyLocal } from "../../utils/gruposPedido"
 
@@ -83,11 +84,12 @@ export default function PedidoBodegaLista() {
   }, [cargar])
   useRefrescoAutomatico(cargar)
 
-  // Los que están en separación primero, después los que nadie ha empezado.
+  // Por separar, y los terminados que Siesa todavía no comprometió («separado»:
+  // flujo anterior o simulación), para volver a pulsar Terminar. En separación primero.
   const porSeparar = useMemo(
     () =>
       pedidos
-        .filter((p) => grupoDe(p) === "creado" && cuentaEl(p, fecha))
+        .filter((p) => (grupoDe(p) === "creado" && cuentaEl(p, fecha)) || p.estado === "separado")
         .sort((a, b) => Number(b.estado === "en_separacion") - Number(a.estado === "en_separacion")),
     [pedidos, fecha],
   )
@@ -146,9 +148,12 @@ export default function PedidoBodegaLista() {
                 onClick={() => navigate(`/bodega/${p.id}`)}
                 className="flex flex-col gap-3 rounded-2xl bg-white px-5 py-4 text-left shadow-sm"
               >
-                <span className="text-[34px] font-bold leading-none" style={DISPLAY}>
-                  {p.f430_consec_docto}
-                </span>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[34px] font-bold leading-none" style={DISPLAY}>
+                    {p.f430_consec_docto}
+                  </span>
+                  {p.estado === "separado" && <Chip tono="alerta" grande>Falta comprometer</Chip>}
+                </div>
 
                 <div className="truncate text-lg font-semibold">{p.f200_razon_social_pedido_fact}</div>
 

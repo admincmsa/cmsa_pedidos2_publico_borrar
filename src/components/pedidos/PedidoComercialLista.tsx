@@ -1,25 +1,25 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import api, { mensajeError } from "../../services/api"
-import { Truck, Trash2, AlertTriangle, Lock, Eye, RefreshCcwDot } from "lucide-react"
+import { Trash2, AlertTriangle, Eye, RefreshCcwDot } from "lucide-react"
 import { estadoPedido, alertaSiesa } from "../../utils/estadosPedido"
 import { useRefrescoAutomatico } from "../../utils/useRefrescoAutomatico"
 import { kg } from "../../bodega/carrete"
 import BarraEstados from "./BarraEstados"
 import { cuentaEl, grupoDe, hoyLocal, type Grupo } from "../../utils/gruposPedido"
 import Chip from "../ui/Chip"
-import Boton from "../ui/Boton"
 import Aviso, { type TipoAviso } from "../ui/Aviso"
 import Dialogo from "../ui/Dialogo"
 
 /**
  * Pedidos para comercial: una tabla del sistema de diseño (encabezado azul,
- * zebra) con lo que comercial decide desde aquí: comprometer lo separado y
- * remisionar. Las confirmaciones y los resultados se muestran en la propia
- * pantalla, no con `confirm()` ni `alert()`, que la tablet no muestra bien.
+ * zebra) para seguir cada pedido. Aquí no se compromete ni se remisiona:
  *
- * No hay «Nuevo pedido»: el backend trae solo de Siesa, cada 10 minutos, los
- * pedidos comprometidos que llevan cobre (/pedidos_importacion dice cuándo).
+ * - los pedidos entran solos desde Siesa cada 10 minutos (/pedidos_importacion);
+ * - bodega compromete en Siesa lo separado al pulsar «Terminar»;
+ * - la remisión se hace en Siesa y la importación deja el pedido Cumplido.
+ *
+ * Lo único que se hace desde aquí es abrir el pedido o quitarlo de la app.
  */
 
 interface Importacion {
@@ -50,26 +50,8 @@ interface PedidoResumen {
   resumen_cobre?: { calibres: number[]; kg_pedidos: number; kg_separados: number; lineas: number; listas: number }
 }
 
-type Accion = { tipo: "comprometer" | "remisionar" | "eliminar"; pedido: PedidoResumen }
-
-const TEXTO_ACCION: Record<Accion["tipo"], { titulo: (p: PedidoResumen) => string; detalle: string; boton: string; peligro?: boolean }> = {
-  comprometer: {
-    titulo: (p) => `¿Comprometer en Siesa lo separado del pedido ${p.f430_consec_docto}?`,
-    detalle: "La app deja en Siesa los carretes exactos que separó bodega. Si el pedido ya estaba comprometido por lo pedido, el compromiso se cambia por lo separado.",
-    boton: "Comprometer",
-  },
-  remisionar: {
-    titulo: (p) => `¿Crear la remisión del pedido ${p.f430_consec_docto} en Siesa?`,
-    detalle: "Sale lo comprometido. El pedido queda Cumplido y ya no se puede cambiar desde la app.",
-    boton: "Remisionar",
-  },
-  eliminar: {
-    titulo: (p) => `¿Eliminar el pedido ${p.f430_consec_docto} de la app?`,
-    detalle: "Desaparece de las listas de comercial y de bodega. En Siesa no cambia nada.",
-    boton: "Eliminar",
-    peligro: true,
-  },
-}
+// Quitar un pedido de la app (en Siesa no cambia nada).
+type Accion = { tipo: "eliminar"; pedido: PedidoResumen }
 
 // Los botones de la fila no abren el pedido: la fila entera sí.
 const soloBoton = (accion: () => void) => (e: MouseEvent) => {
@@ -116,32 +98,21 @@ export default function PedidoComercialLista() {
     [pedidos, fecha, grupo],
   )
 
-  // Comercial vuelve a comprometer con lo separado: la app deja en Siesa los carretes
-  // exactos y libera lo que comercial había comprometido de más (el 131512 reemplaza
-  // la cantidad de cada lote; 0 lo libera). Remisionar saca lo comprometido.
   const ejecutar = async () => {
     if (!accion) return
-    const { tipo, pedido } = accion
+    const { pedido } = accion
     setOcupado(pedido.id)
     setAviso(null)
     try {
-      if (tipo === "comprometer") {
-        const res = await api.post(`/pedido_comprometer/${pedido.id}`)
-        setAviso({ tipo: "ok", titulo: `Pedido ${pedido.f430_consec_docto} comprometido`, detalle: res.data?.mensaje })
-      } else if (tipo === "remisionar") {
-        const res = await api.post(`/pedido_remisionar/${pedido.id}`)
-        setAviso({ tipo: "ok", titulo: `Pedido ${pedido.f430_consec_docto} remisionado`, detalle: res.data?.mensaje })
-      } else {
-        await api.put(`/pedido_eliminar/${pedido.id}`)
-        setAviso({ tipo: "ok", titulo: `Pedido ${pedido.f430_consec_docto} eliminado de la app` })
-      }
+      await api.put(`/pedido_eliminar/${pedido.id}`)
+      setAviso({ tipo: "ok", titulo: `Pedido ${pedido.f430_consec_docto} eliminado de la app` })
       setAccion(null)
       await cargarPedidos(true)
     } catch (err) {
       setAccion(null)
       setAviso({
         tipo: "error",
-        titulo: `No se pudo ${tipo} el pedido ${pedido.f430_consec_docto}`,
+        titulo: `No se pudo eliminar el pedido ${pedido.f430_consec_docto}`,
         detalle: mensajeError(err, "Intente otra vez; si vuelve a fallar, avise a sistemas."),
       })
     } finally {
@@ -158,7 +129,7 @@ export default function PedidoComercialLista() {
           <div>
             <h1 className="display text-[32px] text-cmsa-azul">Pedidos</h1>
             <p className="mt-1 text-[15px] text-cmsa-gris">
-              Comercial compromete lo separado por bodega y remisiona.
+              Bodega compromete en Siesa al terminar; la remisión se hace en Siesa.
             </p>
           </div>
           {importacion && (
@@ -187,7 +158,6 @@ export default function PedidoComercialLista() {
                 <th className="!text-right">Kilos</th>
                 <th>Estado</th>
                 <th className="w-14 !text-center">Ver</th>
-                <th>Acción</th>
                 <th className="w-12"><span className="sr-only">Eliminar</span></th>
               </tr>
             </thead>
@@ -231,29 +201,6 @@ export default function PedidoComercialLista() {
                     <td className="text-center">
                       <Eye size={18} className="inline text-cmsa-azul" aria-label="Ver el pedido" />
                     </td>
-                    <td>
-                      {p.estado === "separado" && (
-                        <Boton
-                          onClick={soloBoton(() => setAccion({ tipo: "comprometer", pedido: p }))}
-                          disabled={ocupado === p.id}
-                          className="h-10 w-36 px-3 text-[14px]"
-                        >
-                          <Lock size={16} />
-                          {ocupado === p.id ? "Comprometiendo…" : "Comprometer"}
-                        </Boton>
-                      )}
-                      {p.estado === "comprometido" && (
-                        <Boton
-                          variante="ok"
-                          onClick={soloBoton(() => setAccion({ tipo: "remisionar", pedido: p }))}
-                          disabled={ocupado === p.id}
-                          className="h-10 w-36 px-3 text-[14px]"
-                        >
-                          <Truck size={16} />
-                          {ocupado === p.id ? "Remisionando…" : "Remisionar"}
-                        </Boton>
-                      )}
-                    </td>
                     <td className="text-center">
                       {p.estado !== "remisionado" && p.estado !== "comprometido" && (
                         <button
@@ -272,7 +219,7 @@ export default function PedidoComercialLista() {
               })}
               {!cargando && visibles.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-cmsa-gris">
+                  <td colSpan={7} className="py-10 text-center text-cmsa-gris">
                     {pedidos.length === 0
                       ? "No hay pedidos todavía. Los comprometidos en Siesa que llevan cobre aparecen aquí solos."
                       : "No hay pedidos en este filtro para ese día."}
@@ -286,10 +233,10 @@ export default function PedidoComercialLista() {
 
       {accion && (
         <Dialogo
-          titulo={TEXTO_ACCION[accion.tipo].titulo(accion.pedido)}
-          detalle={TEXTO_ACCION[accion.tipo].detalle}
-          confirmar={TEXTO_ACCION[accion.tipo].boton}
-          peligro={TEXTO_ACCION[accion.tipo].peligro}
+          titulo={`¿Eliminar el pedido ${accion.pedido.f430_consec_docto} de la app?`}
+          detalle="Desaparece de las listas de comercial y de bodega, y no vuelve a entrar. En Siesa no cambia nada."
+          confirmar="Eliminar"
+          peligro
           ocupado={ocupado === accion.pedido.id}
           onConfirmar={ejecutar}
           onCancelar={() => setAccion(null)}

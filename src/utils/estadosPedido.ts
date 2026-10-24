@@ -2,14 +2,16 @@
 // ESTADOS VISIBLES DEL PEDIDO
 //
 // La base guarda el estado interno de la app (pedidos.estado); aquí se
-// traduce a los tres estados que ve el usuario. Flujo: comercial crea el pedido
-// y lo compromete en Siesa por lo pedido; bodega separa; comercial vuelve a
-// comprometer con lo separado (botón Comprometer) y remisiona.
+// traduce a los tres estados que ve el usuario. Flujo: comercial crea y
+// compromete el pedido en Siesa; la app lo trae sola; bodega separa y al pulsar
+// «Terminar» se compromete en Siesa lo separado; la remisión se hace en Siesa y
+// la importación deja el pedido Cumplido. En la app no hay botones de
+// Comprometer ni de Remisionar.
 //
-//   ingresado / en_separacion -> Creado     (Siesa 2, o 3 si comercial ya comprometió)
-//   separado                  -> Separado   bodega terminó; falta comprometer lo separado
-//   comprometido              -> Separado   comprometido con lo separado; listo para remisionar
-//   remisionado               -> Cumplido   (Siesa 4)
+//   ingresado / en_separacion -> Creado     (Siesa 3: comprometido por comercial)
+//   separado                  -> Separado   solo en simulación (SIESA_ENVIAR=0)
+//   comprometido              -> Separado   comprometido en Siesa con lo separado
+//   remisionado               -> Cumplido   (Siesa 4, remisionado en Siesa)
 // ==========================================================
 
 import type { TonoChip } from "../components/ui/Chip"
