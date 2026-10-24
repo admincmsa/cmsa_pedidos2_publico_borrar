@@ -185,11 +185,9 @@ export function leerCodigo(texto: string): ResultadoLectura {
 
 /*
  * Despacho aproximado: se busca quedar lo más cerca posible de lo pedido, por
- * arriba o por abajo. Un carrete entra si deja la línea más cerca y no pasa lo
- * pedido más el exceso de la línea. Ese exceso depende del tipo de carrete:
- * medio carrete del ítem (22,5 kg en los de 40-45 kg, 10 en los de 18-20, 6 en
- * los de 10-12), o 0 mientras Siesa no acepte exceso. Lo calcula el backend
- * (exceso_max_kg) con la misma regla.
+ * arriba o por abajo. La pantalla no pone tope (excesoKg = Infinity): bodega
+ * agrega lo que tiene y el cliente aprueba la diferencia. El tope real lo pone
+ * Siesa con el % de exceso que tenía el cliente al crear el pedido.
  */
 
 /** "acerca": el carrete entra · "aleja": queda más lejos de lo pedido · "pasa_tope": se pasa más de lo aceptado. */

@@ -187,6 +187,9 @@ export default function PedidoBodegaDetalle() {
   const ocupado = useRef(false)
   const cola = useRef<string[]>([])
   const [libre, setLibre] = useState(0)
+  // Lecturas recibidas que aún no terminan (la que se guarda más las de la fila):
+  // mientras haya alguna, Terminar espera, así la confirmación cuenta todos los carretes.
+  const [enCurso, setEnCurso] = useState(0)
 
   // La pistola es un teclado: su Enter o Tab nunca puede pulsar un botón (Terminar,
   // Quitar…). Fuera del campo se anulan y el foco vuelve al campo; las letras siguen
@@ -248,15 +251,18 @@ export default function PedidoBodegaDetalle() {
     enfocar()
   }
 
-  const procesar = async (entrada: string) => {
+  // deFila: la lectura ya se contó en enCurso cuando llegó.
+  const procesar = async (entrada: string, deFila = false) => {
     if (!entrada.trim()) return // Enter suelto, sin lectura
     if (finalizando) {
+      if (deFila) setEnCurso((n) => n - 1)
       return fallar("El pedido se está terminando", "Espere a que Siesa responda: este carrete no se agregó.")
     }
     // Escanear es seguir separando: cierra la pregunta que estuviera abierta.
     setConfirmarFin(false)
     setPorQuitar(null)
     setCarreteNuevo(null)
+    if (!deFila) setEnCurso((n) => n + 1)
     if (ocupado.current) {
       cola.current.push(entrada)
       return
@@ -266,6 +272,7 @@ export default function PedidoBodegaDetalle() {
       await procesarLectura(entrada)
     } finally {
       ocupado.current = false
+      setEnCurso((n) => n - 1)
       setLibre((n) => n + 1)
     }
   }
@@ -273,7 +280,7 @@ export default function PedidoBodegaDetalle() {
   // La siguiente de la fila, ya con el pedido recargado.
   useEffect(() => {
     const siguiente = cola.current.shift()
-    if (siguiente) procesar(siguiente)
+    if (siguiente) procesar(siguiente, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [libre])
 
@@ -430,11 +437,19 @@ export default function PedidoBodegaDetalle() {
         : `Pedido ${numero} separado y comprometido en Siesa.`
       navigate("/bodega", { state: { aviso: texto } })
     } catch (err) {
-      // Siesa no lo aceptó: el pedido sigue en bodega para quitar o cambiar carretes.
+      // Siesa no lo aceptó, o el servidor vio un calibre que todavía lleva otro carrete:
+      // el pedido sigue en bodega. Se recarga para que calibres, carretes más livianos y
+      // estado sean los del servidor (así vuelve a salir «No hay en bodega» si aplica).
+      await cargarPedido()
+      const datos = axios.isAxiosError(err) ? (err.response?.data as { codigo?: string } | undefined) : undefined
       setAviso({
         tipo: "error",
         titulo: "El pedido no se terminó",
-        detalle: mensajeError(err, "Intente otra vez."),
+        detalle:
+          mensajeError(err, "Intente otra vez.") +
+          (datos?.codigo === "CALIBRE_LLEVA_OTRO"
+            ? " Si ese carrete no está en la bodega, toque Terminar y elija «No hay en bodega»."
+            : ""),
       })
     } finally {
       setFinalizando(false)
@@ -662,16 +677,18 @@ export default function PedidoBodegaDetalle() {
         <button
           tabIndex={-1}
           onClick={(e) => {
-            if (e.detail === 0) return
+            if (e.detail === 0 || enCurso > 0) return
             setConfirmarFin(llevanOtro.length > 0 ? "lleva_otro" : "terminar")
           }}
-          disabled={finalizando || lineas.length === 0}
+          disabled={finalizando || enCurso > 0 || lineas.length === 0}
           className="h-16 rounded-2xl px-8 text-[22px] font-bold disabled:opacity-60"
           style={faltan > 0 ? { background: CMSA.borde, color: CMSA.tinta } : { background: ESTADO.ok, color: "#FFFFFF" }}
         >
           {finalizando
             ? "Terminando…"
-            : faltan > 0
+            : enCurso > 0
+              ? "Guardando carrete…"
+              : faltan > 0
               ? `Terminar · faltan ${faltan} ${faltan === 1 ? "calibre" : "calibres"}`
               : "Terminar separación"}
         </button>
@@ -736,7 +753,7 @@ export default function PedidoBodegaDetalle() {
             "Queda registrado con su nombre y se compromete en Siesa lo separado."
           }
           confirmar="Sí, no hay"
-          onConfirmar={() => finalizar(llevanOtro.map((l) => Number(l.f120_id)))}
+          onConfirmar={() => enCurso === 0 && finalizar(llevanOtro.map((l) => Number(l.f120_id)))}
           onCancelar={() => {
             setConfirmarFin(false)
             enfocar()
@@ -757,7 +774,7 @@ export default function PedidoBodegaDetalle() {
             (faltan > 0 ? " El cliente aprueba la diferencia antes de la remisión." : "")
           }
           confirmar={faltan > 0 ? "Terminar así" : "Terminar"}
-          onConfirmar={() => finalizar()}
+          onConfirmar={() => enCurso === 0 && finalizar()}
           onCancelar={() => {
             setConfirmarFin(false)
             enfocar()
