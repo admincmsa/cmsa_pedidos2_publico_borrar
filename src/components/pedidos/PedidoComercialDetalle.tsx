@@ -1,8 +1,21 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import api, { mensajeError } from "../../services/api"
 import { estadoPedido, alertaSiesa } from "../../utils/estadosPedido"
-import { Trash2, CheckCircle2, ArrowLeft, AlertTriangle } from "lucide-react"
+import { awgDeItem, kg } from "../../bodega/carrete"
+import { Trash2, ChevronLeft, AlertTriangle } from "lucide-react"
+import { CMSA, ESTADO } from "../../theme/cmsa"
+import Chip from "../ui/Chip"
+import Boton from "../ui/Boton"
+import Aviso from "../ui/Aviso"
+import Dialogo from "../ui/Dialogo"
+import TituloSeccion from "../ui/TituloSeccion"
+
+/**
+ * El pedido visto por comercial: cada línea con lo pedido, lo separado y los
+ * carretes que escaneó bodega. Desde aquí comercial puede quitar un carrete
+ * mientras el pedido no esté comprometido con lo separado.
+ */
 
 interface Serial {
   id: number
@@ -34,20 +47,23 @@ interface PedidoDetalle {
   estado: string
   estado_siesa: number | null
   remision: string | null
+  direccion_envio?: string | null
+  ciudad_envio?: string | null
+  depto_envio?: string | null
   detalle: LineaDetalle[]
 }
 
 export default function PedidoComercialDetalle() {
-
   const { pedidoId } = useParams()
   const navigate = useNavigate()
 
   const [pedido, setPedido] = useState<PedidoDetalle | null>(null)
   const [cargando, setCargando] = useState(true)
-  const [eliminandoSerial, setEliminandoSerial] = useState<number | null>(null)
+  const [porQuitar, setPorQuitar] = useState<Serial | null>(null)
+  const [quitando, setQuitando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const cargarPedido = async () => {
+  const cargarPedido = useCallback(async () => {
     try {
       const res = await api.get(`/pedido_detalle/${pedidoId}`)
       setPedido(res.data)
@@ -57,165 +73,178 @@ export default function PedidoComercialDetalle() {
     } finally {
       setCargando(false)
     }
-  }
+  }, [pedidoId])
 
   useEffect(() => {
     cargarPedido()
-  }, [pedidoId])
+  }, [cargarPedido])
 
-  const handleEliminarSerial = async (serialId: number, serialCodigo: string) => {
-    if (!confirm(
-        `¿Quitar el rollo ${serialCodigo} de este pedido? ` +
-        `Si el pedido ya estaba separado (comprometido), volverá a bodega para que lo ajusten.`
-    )) return
-
-    setEliminandoSerial(serialId)
+  const quitar = async () => {
+    if (!porQuitar) return
+    setQuitando(true)
     setError(null)
-
     try {
-        const res = await api.delete(`/pedido_serial_eliminar/${serialId}`)
-        console.log("Respuesta pedido_serial_eliminar:", res.data)
-
-        await cargarPedido()
-
+      await api.delete(`/pedido_serial_eliminar/${porQuitar.id}`)
+      setPorQuitar(null)
+      await cargarPedido()
     } catch (err) {
-        console.error("Error eliminando serial:", err)
-        setError(mensajeError(err, "Error al eliminar el rollo"))
+      setPorQuitar(null)
+      setError(mensajeError(err, "No se pudo quitar el carrete."))
     } finally {
-        setEliminandoSerial(null)
+      setQuitando(false)
     }
-    }
+  }
 
-  if (cargando) return <div className="p-4 xl:p-6 text-gray-400">Cargando pedido...</div>
-  if (!pedido) return <div className="p-4 xl:p-6 text-red-600">{error || "Pedido no encontrado"}</div>
+  if (cargando) return <div className="p-6 text-lg text-cmsa-gris">Cargando pedido…</div>
+  if (!pedido) return <div className="p-6"><Aviso tipo="error" titulo={error || "Pedido no encontrado"} /></div>
 
   const estado = estadoPedido(pedido.estado)
   const alerta = alertaSiesa(pedido.estado, pedido.estado_siesa)
   const bloqueado = pedido.estado === "comprometido" || pedido.estado === "remisionado"
+  const destino = [pedido.direccion_envio, [pedido.ciudad_envio, pedido.depto_envio].filter(Boolean).join(", ")]
+    .filter(Boolean)
+    .join(" · ")
 
   return (
-    <div className="p-4 xl:p-6">
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex items-center gap-4">
+        <Boton variante="secundario" onClick={() => navigate("/comercial")} className="h-11 px-4">
+          <ChevronLeft size={18} /> Pedidos
+        </Boton>
+      </div>
 
-      <button
-        onClick={() => navigate("/comercial")}
-        className="flex items-center gap-1 text-xs xl:text-sm text-gray-600 hover:text-blue-600 mb-4"
-      >
-        <ArrowLeft size={14} /> Volver a la lista
-      </button>
-
-      <div className="bg-white rounded-xl shadow p-3 xl:p-4 mb-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-base xl:text-lg font-semibold text-gray-800">
-            Pedido {pedido.f430_consec_docto} — {pedido.f200_razon_social_pedido_fact}
-          </h1>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${estado.color}`}>
-            {estado.texto}
-          </span>
+      <div className="flex flex-col gap-3 rounded-xl border border-cmsa-borde bg-white p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="display text-[32px] text-cmsa-azul">Pedido {pedido.f430_consec_docto}</h1>
+            <div className="mt-1.5 text-lg font-semibold">{pedido.f200_razon_social_pedido_fact}</div>
+            {destino && (
+              <div className="text-[15px] text-cmsa-gris">
+                <b>Despachar a:</b> {destino}
+              </div>
+            )}
+            {pedido.f431_notas && <div className="text-[15px] text-cmsa-gris"><b>Notas:</b> {pedido.f431_notas}</div>}
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <Chip tono={estado.tono}>{estado.texto}</Chip>
+            {pedido.remision && <Chip tono="profundo">Remisión {pedido.remision}</Chip>}
+          </div>
         </div>
-        {pedido.f431_notas && (
-          <p className="text-xs xl:text-sm text-gray-500 mt-1">Notas: {pedido.f431_notas}</p>
-        )}
-        {pedido.remision && (
-          <p className="text-xs xl:text-sm text-gray-600 mt-1">
-            Remisión <span className="font-mono">{pedido.remision}</span>
-          </p>
-        )}
         {alerta && (
-          <p className="text-xs xl:text-sm text-red-600 mt-1 flex items-center gap-1">
-            <AlertTriangle size={14} /> {alerta}
-          </p>
+          <div className="flex items-center gap-1.5 text-[15px] font-semibold" style={{ color: ESTADO.errorTexto }}>
+            <AlertTriangle size={16} /> {alerta}
+          </div>
         )}
       </div>
 
-      {error && (
-        <p className="text-xs xl:text-sm text-red-600 mb-3 flex items-center gap-1">
-          <AlertTriangle size={14} /> {error}
-        </p>
-      )}
+      {error && <Aviso tipo="error" titulo={error} onCerrar={() => setError(null)} />}
 
-      {/* ================================================== */}
-      {/* LÍNEAS DEL PEDIDO CON SUS ROLLOS */}
-      {/* ================================================== */}
+      {pedido.detalle.map((d) => {
+        const awg = awgDeItem(d.f120_id)
+        const pedida = Number(d.f431_cant_pedida_base || 0)
+        const separado = Number(d.peso_acumulado || 0)
+        const pct = pedida > 0 ? Math.min(100, (separado / pedida) * 100) : 0
+        const completa = d.estado_linea === "separado"
 
-      <div className="space-y-4">
-        {pedido.detalle.map((d) => {
-          const progreso = d.f431_cant_pedida_base
-            ? Math.min(100, (d.peso_acumulado / d.f431_cant_pedida_base) * 100)
-            : 0
-
-          return (
-            <div key={d.id} className="bg-white rounded-xl shadow p-3 xl:p-4">
-
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-sm xl:text-base font-medium text-gray-800">
-                  {d.f120_referencia} — {d.f120_descripcion}
-                </p>
-                {d.estado_linea === "separado" && (
-                  <CheckCircle2 className="text-green-600" size={16} />
-                )}
+        return (
+          <div key={d.id} className="flex flex-col gap-3 rounded-xl border border-cmsa-borde bg-white p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="display text-[26px] text-cmsa-tinta">
+                  {awg !== null ? `AWG ${awg}` : d.f120_referencia}
+                </span>
+                <span className="text-[15px] text-cmsa-gris">
+                  Ítem {d.f120_id} · {d.f120_descripcion}
+                </span>
               </div>
-
-              <div className="w-full bg-gray-100 rounded-full h-2 mb-1">
-                <div
-                  className={`h-2 rounded-full ${
-                    d.estado_linea === "separado" ? "bg-green-500" : "bg-blue-500"
-                  }`}
-                  style={{ width: `${progreso}%` }}
-                />
-              </div>
-
-              <p className="text-xs text-gray-500 mb-3">
-                {d.peso_acumulado.toFixed(2)} kg de {d.f431_cant_pedida_base} kg pedidos
-                {" · "}{d.seriales.length} rollo(s)
-              </p>
-
-              <table className="w-full text-xs xl:text-sm">
-                <thead className="text-gray-500">
-                  <tr>
-                    <th className="text-left py-1">Serie</th>
-                    <th className="text-left py-1">AWG</th>
-                    <th className="text-left py-1">Carrete</th>
-                    <th className="text-left py-1">Peso (kg)</th>
-                    <th className="text-left py-1">Usuario</th>
-                    <th className="text-left py-1"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {d.seriales.map((s) => (
-                    <tr key={s.id} className="border-t">
-                      <td className="py-1 font-mono">{s.serial}</td>
-                      <td className="py-1">{s.awg}</td>
-                      <td className="py-1">{s.tipo_carrete}</td>
-                      <td className="py-1">{s.peso_kg.toFixed(2)}</td>
-                      <td className="py-1 text-gray-500">{s.usuario}</td>
-                      <td className="py-1 text-right">
-                        {!bloqueado && (
-                        <button
-                            type="button"
-                            onClick={() => handleEliminarSerial(s.id, s.serial)}
-                            disabled={eliminandoSerial === s.id}
-                            className="text-red-600 hover:text-red-700 disabled:opacity-50"
-                            title="Quitar este rollo del pedido"
-                            >
-                            <Trash2 size={14} />
-                            </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {d.seriales.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="text-center py-3 text-gray-400">
-                        Sin rollos escaneados en esta línea
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              {awg === null ? (
+                <Chip tono="niebla">No se separa con la pistola</Chip>
+              ) : completa ? (
+                <Chip tono="ok">Separado</Chip>
+              ) : (
+                <Chip tono="amarillo">Por separar</Chip>
+              )}
             </div>
-          )
-        })}
-      </div>
+
+            {awg !== null && (
+              <>
+                <div className="h-3 overflow-hidden rounded-full bg-cmsa-borde">
+                  <div className="h-full" style={{ width: `${pct}%`, background: completa ? ESTADO.ok : CMSA.azul }} />
+                </div>
+                <div className="text-[15px]">
+                  <b className="text-lg tabular-nums">{kg(separado)}</b> de {kg(pedida)} kg pedidos · {d.seriales.length}{" "}
+                  {d.seriales.length === 1 ? "carrete" : "carretes"}
+                </div>
+
+                {d.seriales.length > 0 ? (
+                  <table className="tabla-cmsa">
+                    <thead>
+                      <tr>
+                        <th>Carrete</th>
+                        <th>AWG</th>
+                        <th>Tipo</th>
+                        <th className="text-right">Peso</th>
+                        <th>Escaneó</th>
+                        {!bloqueado && <th className="w-14"><span className="sr-only">Quitar</span></th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.seriales.map((s) => (
+                        <tr key={s.id}>
+                          <td className="font-semibold tabular-nums">{s.serial}</td>
+                          <td>{s.awg}</td>
+                          <td className="text-cmsa-gris">{s.tipo_carrete}</td>
+                          <td className="text-right font-semibold tabular-nums">{kg(s.peso_kg)} kg</td>
+                          <td className="text-cmsa-gris">{s.usuario || "—"}</td>
+                          {!bloqueado && (
+                            <td className="text-center">
+                              <button
+                                type="button"
+                                onClick={() => setPorQuitar(s)}
+                                aria-label={`Quitar el carrete ${s.serial}`}
+                                title="Quitar este carrete del pedido"
+                                className="flex h-10 w-10 items-center justify-center rounded-lg text-[#8A1B12] hover:bg-[#FDE7E5]"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-[15px] text-cmsa-gris">Bodega todavía no ha escaneado carretes en esta línea.</p>
+                )}
+              </>
+            )}
+
+            {awg === null && (
+              <div className="text-[15px] text-cmsa-gris">
+                Cantidad pedida: <b className="tabular-nums">{numeroCorto(pedida)}</b>. Se despacha por fuera de la app.
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      <TituloSeccion linea className="mt-2 opacity-70">Fin del pedido</TituloSeccion>
+
+      {porQuitar && (
+        <Dialogo
+          titulo={`¿Quitar el carrete ${porQuitar.serial} del pedido?`}
+          detalle={`Se devuelven ${kg(porQuitar.peso_kg)} kg a la línea y el carrete vuelve a quedar disponible. Si el pedido ya estaba separado, vuelve a bodega.`}
+          confirmar="Quitar"
+          peligro
+          ocupado={quitando}
+          onConfirmar={quitar}
+          onCancelar={() => setPorQuitar(null)}
+        />
+      )}
     </div>
   )
+}
+
+function numeroCorto(n: number): string {
+  return n.toLocaleString("es-CO", { maximumFractionDigits: 2 })
 }

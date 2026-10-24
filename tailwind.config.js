@@ -19,8 +19,11 @@ export default {
           "sobre-azul": "#AEB2E0",
         },
       },
+      // Archivo para todo: el sistema de diseño no usa una segunda fuente.
+      fontFamily: {
+        sans: ["Archivo", "Arial", "Helvetica", "sans-serif"],
+      },
     },
   },
   plugins: [],
 }
-

@@ -3,9 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom"
 import api from "../../services/api"
 import { User } from "lucide-react"
 import { kg } from "../../bodega/carrete"
-import { CMSA, ESTADO } from "../../theme/cmsa"
+import { CMSA, DISPLAY, ESTADO } from "../../theme/cmsa"
 import { useRefrescoAutomatico } from "../../utils/useRefrescoAutomatico"
 import BarraEstados from "./BarraEstados"
+import Chip, { type TonoChip } from "../ui/Chip"
 
 /**
  * Pedidos por separar, para la tablet de bodega.
@@ -23,7 +24,6 @@ import BarraEstados from "./BarraEstados"
  */
 
 const AZUL = CMSA.azul
-const CONDENSADA = "'Barlow Condensed', 'Arial Narrow', sans-serif"
 
 interface ResumenCobre {
   kg_pedidos: number
@@ -45,15 +45,20 @@ interface PedidoResumen {
   resumen_cobre?: ResumenCobre
 }
 
-function estadoDe(p: PedidoResumen): "Listo para terminar" | "En separación" {
+type EstadoTarjeta = "Sin iniciar" | "En separación" | "Listo para terminar"
+
+// Sin iniciar: nadie ha escaneado. En separación: ya hay carretes. Listo: todos los calibres cerrados.
+function estadoDe(p: PedidoResumen): EstadoTarjeta {
   const r = p.resumen_cobre
-  return r && r.lineas > 0 && r.listas === r.lineas ? "Listo para terminar" : "En separación"
+  if (!r || r.kg_separados <= 0) return "Sin iniciar"
+  return r.lineas > 0 && r.listas === r.lineas ? "Listo para terminar" : "En separación"
 }
 
-const COLOR = {
-  "Listo para terminar": { chip: "bg-emerald-100 text-emerald-800", barra: ESTADO.ok },
-  "En separación": { chip: "bg-cmsa-amarillo text-cmsa-tinta", barra: AZUL },
-} as const
+const COLOR: Record<EstadoTarjeta, { tono: TonoChip; barra: string }> = {
+  "Sin iniciar": { tono: "niebla", barra: CMSA.gris },
+  "En separación": { tono: "amarillo", barra: AZUL },
+  "Listo para terminar": { tono: "ok", barra: ESTADO.ok },
+}
 
 export default function PedidoBodegaLista() {
   const navigate = useNavigate()
@@ -97,7 +102,7 @@ export default function PedidoBodegaLista() {
     <div className="flex h-screen flex-col bg-cmsa-niebla text-cmsa-tinta">
       <header className="flex h-[72px] flex-shrink-0 items-center gap-5 px-6 text-white" style={{ background: AZUL }}>
         <div className="flex-1">
-          <div className="text-3xl font-bold leading-none" style={{ fontFamily: CONDENSADA }}>
+          <div className="text-3xl font-bold leading-none" style={DISPLAY}>
             Pedidos por separar
           </div>
           <div className="text-[15px] opacity-90">Solo alambre esmaltado de cobre</div>
@@ -141,12 +146,10 @@ export default function PedidoBodegaLista() {
                 className="flex flex-col gap-3 rounded-2xl bg-white px-5 py-4 text-left shadow-sm"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-[34px] font-bold leading-none" style={{ fontFamily: CONDENSADA }}>
+                  <span className="text-[34px] font-bold leading-none" style={DISPLAY}>
                     {p.f430_consec_docto}
                   </span>
-                  <span className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[15px] font-bold ${color.chip}`}>
-                    {estado}
-                  </span>
+                  <Chip tono={color.tono} grande>{estado}</Chip>
                 </div>
 
                 <div className="truncate text-lg font-semibold">{p.f200_razon_social_pedido_fact}</div>

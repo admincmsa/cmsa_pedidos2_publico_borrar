@@ -16,10 +16,11 @@ interface Resumen {
 
 const ORDEN: EstadoVisible[] = ["creado", "separado", "cumplido"]
 
-const PUNTO: Record<EstadoVisible, string> = {
+// El cuadrado del estado, con el color de su chip (sistema de diseño: marcas cuadradas).
+const MARCA: Record<EstadoVisible, string> = {
   creado: "bg-cmsa-amarillo",
   separado: "bg-cmsa-azul",
-  cumplido: "bg-green-500",
+  cumplido: "bg-[#0E7A43]",
 }
 
 export default function BarraEstados() {
@@ -49,17 +50,17 @@ export default function BarraEstados() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-cmsa-borde bg-white px-6 py-1.5 text-sm text-cmsa-gris">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-cmsa-borde bg-white px-6 py-2">
       {ORDEN.map((estado) => (
-        <span key={estado} className="flex items-center gap-1.5">
-          <span className={`h-2 w-2 rounded-full ${PUNTO[estado]}`} />
+        <span key={estado} className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-cmsa-gris">
+          <span aria-hidden="true" className={`h-2 w-2 ${MARCA[estado]}`} />
           {ESTADOS[estado].texto}
-          <b className="text-cmsa-tinta">{conteo[estado] ?? 0}</b>
+          <b className="text-[15px] tracking-normal text-cmsa-tinta">{conteo[estado] ?? 0}</b>
         </span>
       ))}
       {(resumen.remisionados_incompletos ?? 0) > 0 && (
-        <span className="text-xs">
-          ({resumen.remisionados_incompletos} cumplidos con menos de lo pedido)
+        <span className="text-[13px] text-cmsa-gris">
+          {resumen.remisionados_incompletos} cumplidos con menos de lo pedido
         </span>
       )}
     </div>

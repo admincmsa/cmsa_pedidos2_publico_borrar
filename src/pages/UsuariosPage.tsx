@@ -33,9 +33,9 @@ const ROLES = [
 ]
 
 const COLOR_ROL: Record<string, string> = {
-  admin: "bg-red-100 text-red-700",
-  bodega: "bg-yellow-100 text-yellow-800",
-  comercial: "bg-blue-100 text-blue-700",
+  admin: "bg-[#FDE7E5] text-[#8A1B12]",
+  bodega: "bg-cmsa-amarillo text-cmsa-tinta",
+  comercial: "bg-cmsa-azul text-white",
 }
 
 const VACIO: Formulario = {
@@ -43,7 +43,7 @@ const VACIO: Formulario = {
 }
 
 const campo =
-  "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+  "w-full border border-cmsa-borde rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cmsa-azul"
 
 export default function UsuariosPage() {
   const { usuario: yo } = useAuth()
@@ -164,32 +164,32 @@ export default function UsuariosPage() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-semibold text-gray-800">Usuarios</h1>
+        <h1 className="display text-[28px] text-cmsa-azul">Usuarios</h1>
         <div className="flex gap-2 items-center">
-          <label className="flex items-center gap-1 text-sm text-gray-600 mr-2">
+          <label className="flex items-center gap-1 text-sm text-cmsa-gris mr-2">
             <input type="checkbox" checked={verInactivos} onChange={(e) => setVerInactivos(e.target.checked)} />
             Ver inactivos
           </label>
           <button
             onClick={cargar}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-cmsa-borde text-cmsa-tinta hover:bg-cmsa-niebla"
           >
             <RefreshCw size={16} /> Actualizar
           </button>
           <button
             onClick={abrirNuevo}
-            className="flex items-center gap-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+            className="flex items-center gap-1 px-4 py-2 rounded-lg bg-cmsa-azul text-white hover:bg-cmsa-azul-profundo"
           >
             <UserPlus size={16} /> Nuevo usuario
           </button>
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+      {error && <p className="text-sm text-[#8A1B12] mb-3">{error}</p>}
 
-      <div className="bg-white rounded-xl shadow overflow-x-auto">
+      <div className="bg-white rounded-xl border border-cmsa-borde overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-600">
+          <thead className="bg-cmsa-azul text-white">
             <tr>
               <th className="text-left px-4 py-2">Nombre</th>
               <th className="text-left px-4 py-2">Identificación</th>
@@ -202,7 +202,7 @@ export default function UsuariosPage() {
           </thead>
           <tbody>
             {visibles.map((u) => (
-              <tr key={u.id} className={`border-t ${u.activo ? "" : "text-gray-400"}`}>
+              <tr key={u.id} className={`border-t ${u.activo ? "" : "text-cmsa-gris"}`}>
                 <td className="px-4 py-2 font-medium">{u.nombre}</td>
                 <td className="px-4 py-2">{u.identificacion || <span className="text-orange-500">Falta</span>}</td>
                 <td className="px-4 py-2">{u.correo || <span className="text-orange-500">Falta</span>}</td>
@@ -214,7 +214,7 @@ export default function UsuariosPage() {
                 </td>
                 <td className="px-4 py-2">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    u.activo ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                    u.activo ? "bg-[#DDF3E6] text-[#0B5E34]" : "bg-cmsa-niebla text-cmsa-gris"
                   }`}>
                     {u.activo ? "Activo" : "Inactivo"}
                   </span>
@@ -222,17 +222,17 @@ export default function UsuariosPage() {
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-1">
                     <button title="Editar" onClick={() => abrirEditar(u)}
-                      className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-100">
+                      className="p-1.5 rounded-lg text-cmsa-azul hover:bg-cmsa-niebla">
                       <Pencil size={16} />
                     </button>
                     <button title="Asignar contraseña"
                       onClick={() => { setClaveDe(u); setClave({ clave: "", clave2: "" }); setErrorClave(null) }}
-                      className="p-1.5 rounded-lg text-gray-700 hover:bg-gray-100">
+                      className="p-1.5 rounded-lg text-cmsa-tinta hover:bg-cmsa-niebla">
                       <KeyRound size={16} />
                     </button>
                     {u.id !== yo?.id && (
                       <button title={u.activo ? "Desactivar" : "Activar"} onClick={() => cambiarActivo(u)}
-                        className={`p-1.5 rounded-lg ${u.activo ? "text-red-600 hover:bg-red-100" : "text-green-600 hover:bg-green-100"}`}>
+                        className={`p-1.5 rounded-lg ${u.activo ? "text-[#8A1B12] hover:bg-red-100" : "text-green-600 hover:bg-green-100"}`}>
                         {u.activo ? <UserX size={16} /> : <UserCheck size={16} />}
                       </button>
                     )}
@@ -241,7 +241,7 @@ export default function UsuariosPage() {
               </tr>
             ))}
             {!cargando && visibles.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-6 text-gray-400">No hay usuarios</td></tr>
+              <tr><td colSpan={7} className="text-center py-6 text-cmsa-gris">No hay usuarios</td></tr>
             )}
           </tbody>
         </table>
@@ -252,58 +252,58 @@ export default function UsuariosPage() {
         title={editando ? `Editar usuario ${editando.username}` : "Nuevo usuario"}>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Nombre completo</label>
+            <label className="block text-[15px] text-cmsa-tinta mb-1">Nombre completo</label>
             <input className={campo} value={form.nombre} onChange={(e) => cambiar("nombre", e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Identificación</label>
+              <label className="block text-[15px] text-cmsa-tinta mb-1">Identificación</label>
               <input className={campo} value={form.identificacion}
                 onChange={(e) => cambiar("identificacion", e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Rol</label>
+              <label className="block text-[15px] text-cmsa-tinta mb-1">Rol</label>
               <select className={campo} value={form.rol} onChange={(e) => cambiar("rol", e.target.value)}>
                 {ROLES.map((r) => <option key={r.valor} value={r.valor}>{r.texto}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Correo</label>
+            <label className="block text-[15px] text-cmsa-tinta mb-1">Correo</label>
             <input type="email" className={campo} value={form.correo} onChange={(e) => cambiar("correo", e.target.value)} />
           </div>
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Usuario para ingresar</label>
+            <label className="block text-[15px] text-cmsa-tinta mb-1">Usuario para ingresar</label>
             <input className={`${campo} font-mono`} value={form.username}
               onChange={(e) => cambiar("username", e.target.value.toLowerCase())} />
           </div>
           {!editando && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-gray-700 mb-1">Contraseña inicial</label>
+                <label className="block text-[15px] text-cmsa-tinta mb-1">Contraseña inicial</label>
                 <input type="password" className={campo} value={form.clave}
                   onChange={(e) => cambiar("clave", e.target.value)} autoComplete="new-password" />
               </div>
               <div>
-                <label className="block text-sm text-gray-700 mb-1">Repetir contraseña</label>
+                <label className="block text-[15px] text-cmsa-tinta mb-1">Repetir contraseña</label>
                 <input type="password" className={campo} value={form.clave2}
                   onChange={(e) => cambiar("clave2", e.target.value)} autoComplete="new-password" />
               </div>
-              <p className="col-span-2 text-xs text-gray-500">
+              <p className="col-span-2 text-xs text-cmsa-gris">
                 Mínimo 8 caracteres, con letras y números. El usuario puede cambiarla después.
               </p>
             </div>
           )}
 
-          {errorForm && <p className="text-sm text-red-600 whitespace-pre-line">{errorForm}</p>}
+          {errorForm && <p className="text-sm text-[#8A1B12] whitespace-pre-line">{errorForm}</p>}
 
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setModalAbierto(false)}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+              className="px-4 py-2 rounded-lg border border-cmsa-borde text-cmsa-tinta hover:bg-cmsa-niebla">
               Cancelar
             </button>
             <button onClick={guardar} disabled={guardando}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+              className="px-4 py-2 rounded-lg bg-cmsa-azul text-white hover:bg-cmsa-azul-profundo disabled:opacity-50">
               {guardando ? "Guardando..." : "Guardar"}
             </button>
           </div>
@@ -313,21 +313,21 @@ export default function UsuariosPage() {
       {/* ASIGNAR CONTRASEÑA */}
       <Modal isOpen={!!claveDe} onClose={() => setClaveDe(null)} title={`Asignar contraseña a ${claveDe?.nombre ?? ""}`}>
         <div className="space-y-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-cmsa-gris">
             Úselo cuando el usuario olvidó su contraseña. Entréguele la nueva y pídale que la cambie al ingresar.
           </p>
           <input type="password" placeholder="Nueva contraseña" className={campo} value={clave.clave}
             onChange={(e) => setClave({ ...clave, clave: e.target.value })} autoComplete="new-password" />
           <input type="password" placeholder="Repetir contraseña" className={campo} value={clave.clave2}
             onChange={(e) => setClave({ ...clave, clave2: e.target.value })} autoComplete="new-password" />
-          {errorClave && <p className="text-sm text-red-600">{errorClave}</p>}
+          {errorClave && <p className="text-sm text-[#8A1B12]">{errorClave}</p>}
           <div className="flex justify-end gap-2">
             <button onClick={() => setClaveDe(null)}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+              className="px-4 py-2 rounded-lg border border-cmsa-borde text-cmsa-tinta hover:bg-cmsa-niebla">
               Cancelar
             </button>
             <button onClick={asignarClave}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+              className="px-4 py-2 rounded-lg bg-cmsa-azul text-white hover:bg-cmsa-azul-profundo">
               Asignar
             </button>
           </div>

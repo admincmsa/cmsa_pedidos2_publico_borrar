@@ -1,10 +1,22 @@
 import { useCallback, useEffect, useState, type MouseEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import api, { mensajeError } from "../../services/api"
-import { PlusCircle, Truck, Trash2, Eye, AlertTriangle, Lock } from "lucide-react"
+import { PlusCircle, Truck, Trash2, AlertTriangle, Lock } from "lucide-react"
 import { estadoPedido, alertaSiesa } from "../../utils/estadosPedido"
 import { useRefrescoAutomatico } from "../../utils/useRefrescoAutomatico"
+import { kg } from "../../bodega/carrete"
 import BarraEstados from "./BarraEstados"
+import Chip from "../ui/Chip"
+import Boton from "../ui/Boton"
+import Aviso, { type TipoAviso } from "../ui/Aviso"
+import Dialogo from "../ui/Dialogo"
+
+/**
+ * Pedidos para comercial: una tabla del sistema de diseño (encabezado azul,
+ * zebra) con lo que comercial decide desde aquí: comprometer lo separado y
+ * remisionar. Las confirmaciones y los resultados se muestran en la propia
+ * pantalla, no con `confirm()` ni `alert()`, que la tablet no muestra bien.
+ */
 
 interface PedidoResumen {
   id: number
@@ -15,7 +27,28 @@ interface PedidoResumen {
   estado_siesa: number | null
   remision: string | null
   total_lineas: number
-  resumen_cobre?: { calibres: number[] }
+  resumen_cobre?: { calibres: number[]; kg_pedidos: number; kg_separados: number; lineas: number; listas: number }
+}
+
+type Accion = { tipo: "comprometer" | "remisionar" | "eliminar"; pedido: PedidoResumen }
+
+const TEXTO_ACCION: Record<Accion["tipo"], { titulo: (p: PedidoResumen) => string; detalle: string; boton: string; peligro?: boolean }> = {
+  comprometer: {
+    titulo: (p) => `¿Comprometer en Siesa lo separado del pedido ${p.f430_consec_docto}?`,
+    detalle: "La app deja en Siesa los carretes exactos que separó bodega. Si el pedido ya estaba comprometido por lo pedido, el compromiso se cambia por lo separado.",
+    boton: "Comprometer",
+  },
+  remisionar: {
+    titulo: (p) => `¿Crear la remisión del pedido ${p.f430_consec_docto} en Siesa?`,
+    detalle: "Sale lo comprometido. El pedido queda Cumplido y ya no se puede cambiar desde la app.",
+    boton: "Remisionar",
+  },
+  eliminar: {
+    titulo: (p) => `¿Eliminar el pedido ${p.f430_consec_docto} de la app?`,
+    detalle: "Desaparece de las listas de comercial y de bodega. En Siesa no cambia nada.",
+    boton: "Eliminar",
+    peligro: true,
+  },
 }
 
 // Los botones de la fila no abren el pedido: la fila entera sí.
@@ -25,24 +58,21 @@ const soloBoton = (accion: () => void) => (e: MouseEvent) => {
 }
 
 export default function PedidoComercialLista() {
-
   const navigate = useNavigate()
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([])
   const [cargando, setCargando] = useState(false)
-  const [remisionando, setRemisionando] = useState<number | null>(null)
-  const [comprometiendo, setComprometiendo] = useState<number | null>(null)
-  const [eliminando, setEliminando] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [accion, setAccion] = useState<Accion | null>(null)
+  const [ocupado, setOcupado] = useState<number | null>(null)
+  const [aviso, setAviso] = useState<{ tipo: TipoAviso; titulo: string; detalle?: string } | null>(null)
 
   const cargarPedidos = useCallback(async (silencioso = false) => {
     if (!silencioso) setCargando(true)
-    setError(null)
     try {
       const res = await api.get("/pedidos_listar")
       setPedidos(res.data)
     } catch (err) {
       console.error(err)
-      setError("No se pudieron cargar los pedidos.")
+      setAviso({ tipo: "error", titulo: "No se pudieron cargar los pedidos", detalle: "Revise la conexión con el servidor." })
     } finally {
       setCargando(false)
     }
@@ -55,168 +85,171 @@ export default function PedidoComercialLista() {
 
   // Comercial vuelve a comprometer con lo separado: la app deja en Siesa los carretes
   // exactos y libera lo que comercial había comprometido de más (el 131512 reemplaza
-  // la cantidad de cada lote; 0 lo libera).
-  const handleComprometer = async (id: number) => {
-    if (!confirm("¿Comprometer en Siesa lo separado en bodega? Si el pedido ya está comprometido, el compromiso se cambia por lo separado.")) return
-
-    setComprometiendo(id)
+  // la cantidad de cada lote; 0 lo libera). Remisionar saca lo comprometido.
+  const ejecutar = async () => {
+    if (!accion) return
+    const { tipo, pedido } = accion
+    setOcupado(pedido.id)
+    setAviso(null)
     try {
-      const res = await api.post(`/pedido_comprometer/${id}`)
-      alert(res.data?.mensaje || "Pedido comprometido con lo separado")
-      await cargarPedidos()
+      if (tipo === "comprometer") {
+        const res = await api.post(`/pedido_comprometer/${pedido.id}`)
+        setAviso({ tipo: "ok", titulo: `Pedido ${pedido.f430_consec_docto} comprometido`, detalle: res.data?.mensaje })
+      } else if (tipo === "remisionar") {
+        const res = await api.post(`/pedido_remisionar/${pedido.id}`)
+        setAviso({ tipo: "ok", titulo: `Pedido ${pedido.f430_consec_docto} remisionado`, detalle: res.data?.mensaje })
+      } else {
+        await api.put(`/pedido_eliminar/${pedido.id}`)
+        setAviso({ tipo: "ok", titulo: `Pedido ${pedido.f430_consec_docto} eliminado de la app` })
+      }
+      setAccion(null)
+      await cargarPedidos(true)
     } catch (err) {
-      alert(mensajeError(err, "Error al comprometer el pedido"))
+      setAccion(null)
+      setAviso({
+        tipo: "error",
+        titulo: `No se pudo ${tipo} el pedido ${pedido.f430_consec_docto}`,
+        detalle: mensajeError(err, "Intente otra vez; si vuelve a fallar, avise a sistemas."),
+      })
     } finally {
-      setComprometiendo(null)
-    }
-  }
-
-  const handleRemisionar = async (id: number) => {
-    if (!confirm("¿Confirmas crear la remisión de este pedido en SIESA? El pedido quedará Cumplido.")) return
-
-    setRemisionando(id)
-    try {
-      const res = await api.post(`/pedido_remisionar/${id}`)
-      alert(res.data?.mensaje || "Pedido remisionado en Siesa")
-      await cargarPedidos()
-    } catch (err) {
-      alert(mensajeError(err, "Error al remisionar el pedido"))
-    } finally {
-      setRemisionando(null)
-    }
-  }
-
-  const handleEliminar = async (id: number, consecutivo: number) => {
-    if (!confirm(`¿Eliminar el pedido ${consecutivo}? Esta acción no se puede deshacer desde la app.`)) return
-
-    setEliminando(id)
-    try {
-      await api.put(`/pedido_eliminar/${id}`)
-      await cargarPedidos()
-    } catch (err) {
-      alert(mensajeError(err, "Error al eliminar el pedido"))
-    } finally {
-      setEliminando(null)
+      setOcupado(null)
     }
   }
 
   return (
-    <div>
-    <BarraEstados />
-    <div className="p-4 xl:p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-base xl:text-xl font-semibold text-gray-800">Pedidos</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate("/comercial/nuevo")}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs xl:text-sm"
-          >
-            <PlusCircle size={14} /> Nuevo Pedido
-          </button>
+    <div className="flex min-h-screen flex-col">
+      <BarraEstados />
+
+      <div className="flex flex-col gap-4 p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="display text-[32px] text-cmsa-azul">Pedidos</h1>
+            <p className="mt-1 text-[15px] text-cmsa-gris">
+              Comercial compromete lo separado por bodega y remisiona.
+            </p>
+          </div>
+          <Boton onClick={() => navigate("/comercial/nuevo")}>
+            <PlusCircle size={18} /> Nuevo pedido
+          </Boton>
+        </div>
+
+        {aviso && <Aviso {...aviso} onCerrar={() => setAviso(null)} />}
+
+        <div className="overflow-x-auto rounded-xl border border-cmsa-borde bg-white">
+          <table className="tabla-cmsa">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Calibres</th>
+                <th className="text-right">Kilos</th>
+                <th>Estado</th>
+                <th>Acción</th>
+                <th className="w-12"><span className="sr-only">Eliminar</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pedidos.map((p) => {
+                const estado = estadoPedido(p.estado)
+                const alerta = alertaSiesa(p.estado, p.estado_siesa)
+                const r = p.resumen_cobre
+                const calibres = r?.calibres ?? []
+                const verPedido = () => navigate(`/comercial/detalle/${p.id}`)
+                return (
+                  <tr key={p.id} onClick={verPedido} title="Ver el pedido" className="cursor-pointer hover:[&>td]:bg-cmsa-azul/5">
+                    <td className="whitespace-nowrap">
+                      <div className="display text-[20px] text-cmsa-tinta">{p.f430_consec_docto}</div>
+                      <div className="mt-0.5 text-[13px] text-cmsa-gris">{p.f430_id_fecha || "—"}</div>
+                    </td>
+                    <td>
+                      <div className="max-w-[230px] truncate font-semibold" title={p.f200_razon_social_pedido_fact}>
+                        {p.f200_razon_social_pedido_fact}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap">{calibres.length > 0 ? `AWG ${calibres.join(", ")}` : "—"}</td>
+                    <td className="whitespace-nowrap text-right tabular-nums">
+                      {r && r.kg_pedidos > 0 ? (
+                        <>
+                          <b>{kg(r.kg_separados)}</b>
+                          <span className="text-cmsa-gris"> / {kg(r.kg_pedidos)} kg</span>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td>
+                      <Chip tono={estado.tono}>{estado.texto}</Chip>
+                      {estado.clave === "cumplido" && p.remision && (
+                        <div className="mt-1 text-[13px] text-cmsa-gris">{p.remision}</div>
+                      )}
+                      {alerta && (
+                        <div className="mt-1 flex items-center gap-1 text-[13px] font-semibold text-[#8A1B12]">
+                          <AlertTriangle size={13} /> {alerta}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {p.estado === "separado" && (
+                        <Boton
+                          onClick={soloBoton(() => setAccion({ tipo: "comprometer", pedido: p }))}
+                          disabled={ocupado === p.id}
+                          className="h-10 w-36 px-3 text-[14px]"
+                        >
+                          <Lock size={16} />
+                          {ocupado === p.id ? "Comprometiendo…" : "Comprometer"}
+                        </Boton>
+                      )}
+                      {p.estado === "comprometido" && (
+                        <Boton
+                          variante="ok"
+                          onClick={soloBoton(() => setAccion({ tipo: "remisionar", pedido: p }))}
+                          disabled={ocupado === p.id}
+                          className="h-10 w-36 px-3 text-[14px]"
+                        >
+                          <Truck size={16} />
+                          {ocupado === p.id ? "Remisionando…" : "Remisionar"}
+                        </Boton>
+                      )}
+                    </td>
+                    <td className="text-center">
+                      {p.estado !== "remisionado" && p.estado !== "comprometido" && (
+                        <button
+                          title="Eliminar pedido"
+                          aria-label={`Eliminar el pedido ${p.f430_consec_docto}`}
+                          onClick={soloBoton(() => setAccion({ tipo: "eliminar", pedido: p }))}
+                          disabled={ocupado === p.id}
+                          className="flex h-10 w-10 items-center justify-center rounded-lg text-[#8A1B12] hover:bg-[#FDE7E5] disabled:opacity-50"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              {!cargando && pedidos.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-10 text-center text-cmsa-gris">
+                    No hay pedidos registrados. Agregue uno con «Nuevo pedido».
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {error && <p className="text-xs xl:text-sm text-red-600 mb-3">{error}</p>}
-
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full text-xs xl:text-sm">
-          <thead className="bg-gray-50 text-gray-600">
-            <tr>
-              <th className="text-left px-3 py-1.5">Pedido</th>
-              <th className="text-left px-3 py-1.5">Fecha</th>
-              <th className="text-left px-3 py-1.5">Cliente</th>
-              <th className="text-left px-3 py-1.5">Calibres</th>
-              <th className="text-left px-3 py-1.5">Estado</th>
-              <th className="text-left px-3 py-1.5">Acción</th>
-              <th className="w-10 px-1 py-1.5"><span className="sr-only">Eliminar</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {pedidos.map((p) => {
-              const estado = estadoPedido(p.estado)
-              const alerta = alertaSiesa(p.estado, p.estado_siesa)
-              const calibres = p.resumen_cobre?.calibres ?? []
-              const verPedido = () => navigate(`/comercial/detalle/${p.id}`)
-              return (
-                <tr
-                  key={p.id}
-                  onClick={verPedido}
-                  title="Ver el pedido"
-                  className="border-t cursor-pointer hover:bg-blue-50/60"
-                >
-                  <td className="px-3 py-1.5 font-medium">{p.f430_consec_docto}</td>
-                  <td className="px-3 py-1.5">{p.f430_id_fecha || "—"}</td>
-                  <td className="px-3 py-1.5">
-                    <span className="inline-flex items-center gap-1.5">
-                      {p.f200_razon_social_pedido_fact}
-                      <Eye size={14} className="shrink-0 text-blue-600" aria-hidden="true" />
-                    </span>
-                  </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap">
-                    {calibres.length > 0 ? `AWG ${calibres.join(", ")}` : "—"}
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${estado.color}`}>
-                      {estado.texto}
-                    </span>
-                    {estado.clave === "cumplido" && p.remision && (
-                      <div className="text-xs text-gray-500 font-mono mt-1">{p.remision}</div>
-                    )}
-                    {alerta && (
-                      <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
-                        <AlertTriangle size={12} /> {alerta}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-3 py-1.5">
-                    {p.estado === "separado" && (
-                      <button
-                        onClick={soloBoton(() => handleComprometer(p.id))}
-                        disabled={comprometiendo === p.id}
-                        className="flex w-32 items-center justify-center gap-1 px-3 py-1 rounded-lg bg-cmsa-azul text-white text-xs hover:bg-cmsa-azul-profundo disabled:opacity-50"
-                      >
-                        <Lock size={14} />
-                        {comprometiendo === p.id ? "Comprometiendo..." : "Comprometer"}
-                      </button>
-                    )}
-
-                    {p.estado === "comprometido" && (
-                      <button
-                        onClick={soloBoton(() => handleRemisionar(p.id))}
-                        disabled={remisionando === p.id}
-                        className="flex w-32 items-center justify-center gap-1 px-3 py-1 rounded-lg bg-green-600 text-white text-xs hover:bg-green-700 disabled:opacity-50"
-                      >
-                        <Truck size={14} />
-                        {remisionando === p.id ? "Remisionando..." : "Remisionar"}
-                      </button>
-                    )}
-                  </td>
-                  <td className="px-1 py-1.5 text-center">
-                    {p.estado !== "remisionado" && p.estado !== "comprometido" && (
-                      <button
-                        title="Eliminar pedido"
-                        onClick={soloBoton(() => handleEliminar(p.id, p.f430_consec_docto))}
-                        disabled={eliminando === p.id}
-                        className="p-1.5 rounded-lg text-red-600 hover:bg-red-100 disabled:opacity-50"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-            {!cargando && pedidos.length === 0 && (
-              <tr>
-                <td colSpan={7} className="text-center py-6 text-gray-400">
-                  No hay pedidos registrados
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+      {accion && (
+        <Dialogo
+          titulo={TEXTO_ACCION[accion.tipo].titulo(accion.pedido)}
+          detalle={TEXTO_ACCION[accion.tipo].detalle}
+          confirmar={TEXTO_ACCION[accion.tipo].boton}
+          peligro={TEXTO_ACCION[accion.tipo].peligro}
+          ocupado={ocupado === accion.pedido.id}
+          onConfirmar={ejecutar}
+          onCancelar={() => setAccion(null)}
+        />
+      )}
     </div>
   )
 }

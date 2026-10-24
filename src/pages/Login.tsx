@@ -4,9 +4,14 @@ import { useAuth } from "../context/AuthContext"
 import { mensajeError } from "../services/api"
 import logo_cmsa from "../logo-cmsa.png"
 import logo_isashi from "../Logo-Isashii2-1.png"
+import Boton from "../components/ui/Boton"
+import Aviso from "../components/ui/Aviso"
 
+/**
+ * Ingreso. Es la primera pantalla que ve el operario en la tablet: campos
+ * altos para tocarlos con el dedo y el error en la propia tarjeta.
+ */
 export default function Login() {
-
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -19,7 +24,6 @@ export default function Login() {
     e.preventDefault()
     setError(null)
     setCargando(true)
-
     try {
       await login(username, password)
       navigate("/")
@@ -31,64 +35,51 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-cmsa-niebla">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-cmsa-niebla px-4">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-2xl shadow-md w-full max-w-sm space-y-4"
+        className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-cmsa-borde bg-white p-8"
       >
-        <div className="flex flex-col items-center mb-2">
-          <img src={logo_cmsa} alt="CMSA" className="h-14 object-contain mb-3" />
-          <h1 className="text-xl font-semibold text-cmsa-tinta">
-            Gestión de Pedidos
-          </h1>
-          <p className="text-sm text-cmsa-gris">Inicia sesión para continuar</p>
+        <div className="mb-2 flex flex-col items-center text-center">
+          <img src={logo_cmsa} alt="CMSA" className="mb-4 h-14 object-contain" />
+          <h1 className="display text-[26px] text-cmsa-azul">Gestión de pedidos</h1>
+          <p className="mt-1 text-[15px] text-cmsa-gris">Inicie sesión para continuar</p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-cmsa-tinta mb-1">
-            Usuario
-          </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="etiqueta">Usuario</span>
           <input
-            className="w-full border border-cmsa-borde rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cmsa-azul"
+            className="campo h-12"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+            autoCapitalize="none"
             autoFocus
           />
-        </div>
+        </label>
 
-        <div>
-          <label className="block text-sm font-medium text-cmsa-tinta mb-1">
-            Contraseña
-          </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="etiqueta">Contraseña</span>
           <input
             type="password"
-            className="w-full border border-cmsa-borde rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cmsa-azul"
+            className="campo h-12"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
           />
-        </div>
+        </label>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <Aviso tipo="error" titulo={error} />}
 
-        <button
-          type="submit"
-          disabled={cargando}
-          className="w-full bg-cmsa-azul text-white py-2 rounded-lg hover:bg-cmsa-azul-profundo disabled:opacity-50"
-        >
-          {cargando ? "Ingresando..." : "Ingresar"}
-        </button>
+        <Boton type="submit" disabled={cargando} className="mt-2 h-12 w-full">
+          {cargando ? "Ingresando…" : "Ingresar"}
+        </Boton>
       </form>
 
       {/* Firma del desarrollador. El PNG trae fondo blanco: multiply lo funde con el fondo. */}
       <div className="flex flex-col items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cmsa-gris">
-          Powered by
-        </span>
-        <img
-          src={logo_isashi}
-          alt="IsashiIA"
-          className="h-14 object-contain mix-blend-multiply"
-        />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cmsa-gris">Powered by</span>
+        <img src={logo_isashi} alt="IsashiIA" className="h-14 object-contain mix-blend-multiply" />
       </div>
     </div>
   )

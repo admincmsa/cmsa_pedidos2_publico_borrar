@@ -6,7 +6,8 @@ import { ChevronLeft, ScanLine, Trash2, User } from "lucide-react"
 import {
   awgDeItem, esCobre, esLecturaCompleta, kg, leerCodigo, lineaLista, rangoCarrete,
 } from "../../bodega/carrete"
-import { CMSA, ESTADO } from "../../theme/cmsa"
+import { CMSA, DISPLAY, ESTADO } from "../../theme/cmsa"
+import Chip, { type TonoChip } from "../ui/Chip"
 
 /**
  * Separación de un pedido en bodega, con la pistola QR en una tablet de 10".
@@ -18,7 +19,6 @@ import { CMSA, ESTADO } from "../../theme/cmsa"
  */
 
 const AZUL = CMSA.azul
-const CONDENSADA = "'Barlow Condensed', 'Arial Narrow', sans-serif"
 
 
 interface Serial {
@@ -147,22 +147,22 @@ function semaforoDe(linea: LineaDetalle, pedido: number, separado: number): Sema
   return Math.abs(desvio) * precio > UMBRAL_PESOS ? "amarillo" : "verde"
 }
 
-const COLOR_SEMAFORO = {
-  verde: { barra: ESTADO.ok, chip: "bg-emerald-100 text-emerald-800", fondo: ESTADO.okFondo, texto: ESTADO.okTexto },
-  amarillo: { barra: CMSA.amarillo, chip: "bg-cmsa-amarillo text-cmsa-tinta", fondo: CMSA.amarillo, texto: CMSA.tinta },
-  rojo: { barra: "#C0392B", chip: "bg-red-100 text-red-800", fondo: ESTADO.errorFondo, texto: ESTADO.errorTexto },
-} as const
+const COLOR_SEMAFORO: Record<Semaforo, { barra: string; tono: TonoChip; fondo: string; texto: string }> = {
+  verde: { barra: ESTADO.ok, tono: "ok", fondo: ESTADO.okFondo, texto: ESTADO.okTexto },
+  amarillo: { barra: CMSA.amarillo, tono: "alerta", fondo: ESTADO.alertaFondo, texto: ESTADO.alertaTexto },
+  rojo: { barra: "#C0392B", tono: "error", fondo: ESTADO.errorFondo, texto: ESTADO.errorTexto },
+}
 
 /** Barra y chip de una línea: las listas van con el color de su semáforo. */
 function colores(l: LineaCalculada) {
   return l.semaforo ? COLOR_SEMAFORO[l.semaforo] : COLOR_ESTADO[l.estado]
 }
 
-const COLOR_ESTADO = {
-  Lista: { barra: ESTADO.ok, chip: "bg-emerald-100 text-emerald-800" },
-  Separando: { barra: AZUL, chip: "bg-cmsa-azul text-white" },
-  Pendiente: { barra: CMSA.gris, chip: "bg-cmsa-niebla text-cmsa-gris" },
-} as const
+const COLOR_ESTADO: Record<LineaCalculada["estado"], { barra: string; tono: TonoChip }> = {
+  Lista: { barra: ESTADO.ok, tono: "ok" },
+  Separando: { barra: AZUL, tono: "azul" },
+  Pendiente: { barra: CMSA.gris, tono: "niebla" },
+}
 
 export default function PedidoBodegaDetalle() {
   const { pedidoId } = useParams()
@@ -398,7 +398,7 @@ export default function PedidoBodegaDetalle() {
           <ChevronLeft size={20} /> Pedidos
         </button>
         <div className="min-w-0 flex-1">
-          <div className="text-3xl font-bold leading-none" style={{ fontFamily: CONDENSADA }}>
+          <div className="text-3xl font-bold leading-none" style={DISPLAY}>
             Pedido {pedido.f430_consec_docto}
           </div>
           <div className="truncate text-base opacity-90">
@@ -419,7 +419,7 @@ export default function PedidoBodegaDetalle() {
 
       <div className="flex min-h-0 flex-1 gap-5 px-6 py-5">
         <section aria-label="Calibres del pedido" className="flex w-[300px] flex-shrink-0 flex-col gap-3 overflow-auto">
-          <div className="text-[15px] font-bold uppercase tracking-wider text-cmsa-gris">
+          <div className="etiqueta">
             Calibres · {listas} de {lineas.length} listos
           </div>
 
@@ -438,10 +438,10 @@ export default function PedidoBodegaDetalle() {
                 style={{ border: `3px solid ${elegida ? AZUL : "transparent"}` }}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[34px] font-bold leading-none" style={{ fontFamily: CONDENSADA }}>
+                  <span className="text-[34px] font-bold leading-none" style={DISPLAY}>
                     AWG {l.awg}
                   </span>
-                  <span className={`rounded-full px-3 py-1.5 text-[15px] font-bold ${color.chip}`}>{l.estado}</span>
+                  <Chip tono={color.tono}>{l.estado}</Chip>
                 </div>
                 <div className="text-[15px] text-cmsa-gris">Ítem {l.f120_id}</div>
                 <div className="h-2.5 overflow-hidden rounded-full bg-cmsa-borde">
@@ -465,7 +465,7 @@ export default function PedidoBodegaDetalle() {
           {actual && (
             <div className="flex flex-shrink-0 flex-col gap-3.5 rounded-2xl bg-white px-6 py-5 shadow-sm">
               <div className="flex items-baseline gap-3.5">
-                <span className="text-[40px] font-bold leading-none" style={{ fontFamily: CONDENSADA }}>
+                <span className="text-[40px] font-bold leading-none" style={DISPLAY}>
                   AWG {actual.awg}
                 </span>
                 <span className="text-lg text-cmsa-gris">Ítem {actual.f120_id}</span>
@@ -507,8 +507,8 @@ export default function PedidoBodegaDetalle() {
           )}
 
           <div className="flex flex-shrink-0 flex-col gap-3 rounded-2xl bg-white px-6 py-4 shadow-sm">
-            <label htmlFor="escaneo" className="text-[15px] font-bold uppercase tracking-wider text-cmsa-gris">
-              Escanee el carrete
+            <label htmlFor="escaneo" className="etiqueta">
+              Escanee el carrete · se agrega solo
             </label>
             <div
               className="flex h-16 items-center gap-3.5 rounded-xl bg-white px-4"
@@ -528,11 +528,11 @@ export default function PedidoBodegaDetalle() {
                   }
                 }}
                 onBlur={() => setTimeout(enfocar, 50)}
-                placeholder="QR dañado: escriba los 8 dígitos de la serie"
+                placeholder="Escanee el carrete o escriba su número, ej. 36763002"
                 autoComplete="off"
                 inputMode="numeric"
                 className="h-full min-w-0 flex-1 border-0 bg-transparent text-[26px] text-cmsa-tinta"
-                style={{ fontFamily: CONDENSADA }}
+                style={DISPLAY}
               />
             </div>
 
@@ -553,7 +553,7 @@ export default function PedidoBodegaDetalle() {
           </div>
 
           <div className="flex flex-shrink-0 flex-col rounded-2xl bg-white px-6 py-3.5 shadow-sm">
-            <div className="grid grid-cols-[1.4fr_1fr_1fr_64px] gap-3 border-b-2 border-cmsa-borde pb-1.5 text-sm font-bold uppercase tracking-wider text-cmsa-gris">
+            <div className="etiqueta grid grid-cols-[1.4fr_1fr_1fr_64px] gap-3 border-b-2 border-cmsa-borde pb-1.5">
               <span>Carrete</span>
               <span>Peso</span>
               <span>Tipo</span>
@@ -569,7 +569,7 @@ export default function PedidoBodegaDetalle() {
                 key={s.id}
                 className="grid min-h-[52px] grid-cols-[1.4fr_1fr_1fr_64px] items-center gap-3 border-b border-cmsa-borde text-xl"
               >
-                <span className="text-2xl font-semibold" style={{ fontFamily: CONDENSADA }}>
+                <span className="text-2xl font-semibold" style={DISPLAY}>
                   {s.serial}
                 </span>
                 <span className="font-semibold">{kg(s.peso_kg)} kg</span>
@@ -671,7 +671,7 @@ function Numero({
       <div className="text-[15px] font-bold uppercase tracking-wider" style={{ color: color ?? CMSA.gris }}>
         {etiqueta}
       </div>
-      <div className="whitespace-nowrap text-[46px] font-bold leading-none tabular-nums" style={{ fontFamily: CONDENSADA }}>
+      <div className="whitespace-nowrap text-[46px] font-bold leading-none tabular-nums" style={DISPLAY}>
         {kg(valor)}
         <span className="text-[22px]"> kg</span>
       </div>

@@ -44,10 +44,10 @@ interface Movimiento {
 }
 
 const COLOR_ESTADO: Record<string, string> = {
-  DISPONIBLE: "bg-green-100 text-green-700",
-  PARCIAL: "bg-yellow-100 text-yellow-700",
-  COMPROMETIDO: "bg-purple-100 text-purple-700",
-  DESPACHADO: "bg-gray-100 text-gray-600",
+  DISPONIBLE: "bg-[#DDF3E6] text-[#0B5E34]",
+  PARCIAL: "bg-cmsa-amarillo text-cmsa-tinta",
+  COMPROMETIDO: "bg-cmsa-niebla text-cmsa-azul",
+  DESPACHADO: "bg-cmsa-niebla text-cmsa-gris",
 }
 
 const kg = (n: number) =>
@@ -130,16 +130,16 @@ export default function InventarioPage() {
   return (
     <div className="p-4 xl:p-6">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-base xl:text-xl font-semibold text-gray-800">Inventario de carretes</h1>
+        <h1 className="display text-[28px] text-cmsa-azul">Inventario de carretes</h1>
         <button
           onClick={cargarResumen}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs xl:text-sm"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-cmsa-borde text-cmsa-tinta hover:bg-cmsa-niebla text-[15px]"
         >
           <RefreshCw size={14} /> Actualizar
         </button>
       </div>
 
-      {error && <p className="text-xs xl:text-sm text-red-600 mb-3 whitespace-pre-line">{error}</p>}
+      {error && <p className="text-[15px] text-[#8A1B12] mb-3 whitespace-pre-line">{error}</p>}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         {[
@@ -148,18 +148,18 @@ export default function InventarioPage() {
           ["Comprometidos (kg)", kg(totales.comprometidos)],
           ["Disponibles (kg)", kg(totales.disponibles)],
         ].map(([titulo, valor]) => (
-          <div key={titulo} className="bg-white rounded-xl shadow p-3 xl:p-4">
-            <p className="text-xs text-gray-500">{titulo}</p>
-            <p className="text-base xl:text-xl font-semibold text-gray-800">{valor}</p>
+          <div key={titulo} className="bg-white rounded-xl border border-cmsa-borde p-3 xl:p-4">
+            <p className="text-xs text-cmsa-gris">{titulo}</p>
+            <p className="display text-[28px] text-cmsa-azul">{valor}</p>
           </div>
         ))}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
         {/* RESUMEN POR ÍTEM */}
-        <div className="bg-white rounded-xl shadow overflow-auto max-h-[calc(100vh-260px)] min-h-[240px]">
-          <table className="w-full text-xs xl:text-sm">
-            <thead className="bg-gray-50 text-gray-600 sticky top-0">
+        <div className="bg-white rounded-xl border border-cmsa-borde overflow-auto max-h-[calc(100vh-260px)] min-h-[240px]">
+          <table className="w-full text-[15px]">
+            <thead className="bg-cmsa-azul text-white sticky top-0">
               <tr>
                 <th className="text-left px-3 py-1.5">Ítem</th>
                 <th className="text-left px-3 py-1.5">Descripción</th>
@@ -173,26 +173,29 @@ export default function InventarioPage() {
                 <tr
                   key={r.id_item}
                   onClick={() => { setSerieBuscar(""); setVerPendientes(false); setItemSel(r) }}
-                  className={`border-t cursor-pointer hover:bg-blue-50 ${
-                    itemSel?.id_item === r.id_item ? "bg-blue-50" : ""
+                  className={`border-t cursor-pointer hover:bg-cmsa-niebla ${
+                    itemSel?.id_item === r.id_item ? "bg-cmsa-niebla" : ""
                   }`}
                 >
                   <td className="px-3 py-1.5 font-medium">{r.id_item}</td>
-                  <td className="px-3 py-1.5">{r.descripcion}</td>
+                  <td className="px-3 py-1.5">
+                    <b>AWG {r.awg}</b>
+                    <div className="text-[13px] leading-tight text-cmsa-gris">{r.descripcion}</div>
+                  </td>
                   <td className="px-3 py-1.5 text-right">{r.rollos_en_bodega}</td>
                   <td className="px-3 py-1.5 text-right">{kg(r.kilos_comprometidos)}</td>
                   <td className="px-3 py-1.5 text-right font-medium">{kg(r.kilos_disponibles)}</td>
                 </tr>
               ))}
               {resumen.length === 0 && (
-                <tr><td colSpan={5} className="text-center py-6 text-gray-400">Sin inventario cargado</td></tr>
+                <tr><td colSpan={5} className="text-center py-6 text-cmsa-gris">Sin inventario cargado</td></tr>
               )}
             </tbody>
           </table>
         </div>
 
         {/* ROLLOS */}
-        <div className="bg-white rounded-xl shadow p-3 xl:p-4 flex flex-col max-h-[calc(100vh-260px)] min-h-[240px]">
+        <div className="bg-white rounded-xl border border-cmsa-borde p-3 xl:p-4 flex flex-col max-h-[calc(100vh-260px)] min-h-[240px]">
           <form
             onSubmit={(e) => { e.preventDefault(); setItemSel(null); setVerPendientes(false); cargarRollos(null, serieBuscar.trim(), false) }}
             className="flex gap-2 mb-3"
@@ -203,7 +206,7 @@ export default function InventarioPage() {
               placeholder="Buscar serie del carrete"
               className="flex-1 border rounded-lg px-3 py-1.5 text-sm font-mono"
             />
-            <button className="px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs xl:text-sm">
+            <button className="px-3 py-1.5 rounded-lg bg-cmsa-azul text-white hover:bg-cmsa-azul-profundo text-[15px]">
               <Search size={14} />
             </button>
           </form>
@@ -223,13 +226,13 @@ export default function InventarioPage() {
             </button>
           )}
 
-          <div className="flex justify-between items-center mb-2 text-xs xl:text-sm">
-            <p className="font-medium text-gray-700">
+          <div className="flex justify-between items-center mb-2 text-[15px]">
+            <p className="font-medium text-cmsa-tinta">
               {verPendientes
                 ? "Carretes pendientes de packing list"
                 : itemSel ? `${itemSel.id_item} — ${itemSel.descripcion}` : serieBuscar ? "Resultado de la búsqueda" : "Seleccione un ítem"}
             </p>
-            <label className="flex items-center gap-1 text-gray-600">
+            <label className="flex items-center gap-1 text-cmsa-gris">
               <input
                 type="checkbox"
                 checked={soloDisponibles}
@@ -240,8 +243,8 @@ export default function InventarioPage() {
           </div>
 
           <div className="overflow-auto">
-            <table className="w-full text-xs xl:text-sm">
-              <thead className="text-gray-500 sticky top-0 bg-white">
+            <table className="w-full text-[15px]">
+              <thead className="text-cmsa-gris sticky top-0 bg-white">
                 <tr>
                   <th className="text-left py-1">Serie</th>
                   <th className="text-right py-1">Inicial</th>
@@ -269,7 +272,7 @@ export default function InventarioPage() {
                     <td className="py-1 text-right">{kg(r.kilos_existencia)}</td>
                     <td className="py-1 text-right font-medium">{kg(r.kilos_disponibles)}</td>
                     <td className="py-1 pl-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${COLOR_ESTADO[r.estado] || ""}`}>
+                      <span className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] ${COLOR_ESTADO[r.estado] || ""}`}>
                         {r.estado}
                       </span>
                     </td>
@@ -277,7 +280,7 @@ export default function InventarioPage() {
                       <button
                         onClick={() => verKardex(r.serie)}
                         title="Ver movimientos"
-                        className="p-1 rounded text-blue-600 hover:bg-blue-100"
+                        className="p-1 rounded text-cmsa-azul hover:bg-cmsa-niebla"
                       >
                         <History size={14} />
                       </button>
@@ -285,18 +288,18 @@ export default function InventarioPage() {
                   </tr>
                 ))}
                 {!cargando && rollos.length === 0 && (itemSel || serieBuscar) && (
-                  <tr><td colSpan={6} className="text-center py-4 text-gray-400">Sin carretes</td></tr>
+                  <tr><td colSpan={6} className="text-center py-4 text-cmsa-gris">Sin carretes</td></tr>
                 )}
               </tbody>
             </table>
-            {cargando && <p className="text-center py-4 text-gray-400">Cargando...</p>}
+            {cargando && <p className="text-center py-4 text-cmsa-gris">Cargando...</p>}
           </div>
         </div>
       </div>
 
       <Modal isOpen={!!kardex} onClose={() => setKardex(null)} title={`Movimientos del rollo ${kardex?.serie ?? ""}`}>
         <table className="w-full text-xs">
-          <thead className="text-gray-500">
+          <thead className="text-cmsa-gris">
             <tr>
               <th className="text-left py-1">Fecha</th>
               <th className="text-left py-1">Tipo</th>

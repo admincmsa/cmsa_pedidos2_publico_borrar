@@ -9,8 +9,11 @@ import { useEffect, useRef } from "react"
  * muestre «Cargando…» ni borre lo que ya tiene mientras llega la respuesta.
  */
 export function useRefrescoAutomatico(cargar: (silencioso: boolean) => unknown, cadaMs = 20000) {
+  // La última versión de `cargar`, sin reiniciar el intervalo cada vez que cambia.
   const ultimo = useRef(cargar)
-  ultimo.current = cargar
+  useEffect(() => {
+    ultimo.current = cargar
+  }, [cargar])
 
   useEffect(() => {
     const refrescar = () => {

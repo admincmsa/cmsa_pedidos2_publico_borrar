@@ -1,10 +1,20 @@
-import { useState, useMemo } from "react"
-import api from "../../services/api"
-import type { ColDef } from "ag-grid-community"
-import { AgGridReact, AgGridProvider } from "ag-grid-react"
-import { themeBalham } from "ag-grid-community"
-import { AllCommunityModule } from "ag-grid-community"
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { ChevronLeft, Search } from "lucide-react"
+import api, { mensajeError } from "../../services/api"
+import { awgDeItem, esCobre } from "../../bodega/carrete"
+import Boton from "../ui/Boton"
+import Chip from "../ui/Chip"
+import Aviso from "../ui/Aviso"
+import TituloSeccion from "../ui/TituloSeccion"
+
+/**
+ * Nuevo pedido: comercial escribe el número del pedido de Siesa, la app lo
+ * lee de allá y lo muestra como el documento (chip del pedido, panel de
+ * datos, tabla de ítems). Al guardar, queda en la lista para que bodega lo
+ * separe. Solo las líneas de cobre se separan con la pistola; las demás se
+ * marcan para que comercial lo sepa desde aquí.
+ */
 
 interface DetalleItem {
   f120_id: number | string
@@ -27,115 +37,41 @@ interface PedidoSiesa {
   detalle: DetalleItem[]
 }
 
-interface PedidoFormProps {
-  onCreated?: () => void
-}
-
-// ==========================================================
-// FORMATOS (es-CO): moneda y número
-// ==========================================================
-
-const formatoMoneda = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-})
-
-const formatoNumero = new Intl.NumberFormat("es-CO", {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-})
+const moneda = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 })
+const numero = new Intl.NumberFormat("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
 // Siesa puede enviar los valores como texto: se convierten a número
-const aNumero = (valor: unknown): number | null => {
-  if (valor === null || valor === undefined || valor === "") return null
+const aNumero = (valor: unknown): number => {
   const n = Number(valor)
-  return Number.isFinite(n) ? n : null
+  return Number.isFinite(n) ? n : 0
 }
 
-const columnaNumerica = (formato: Intl.NumberFormat): Partial<ColDef<DetalleItem>> => ({
-  valueGetter: (p) => aNumero(p.data?.[p.colDef.field as keyof DetalleItem]),
-  valueFormatter: (p) => (p.value === null || p.value === undefined ? "" : formato.format(p.value)),
-  filter: "agNumberColumnFilter",
-  cellStyle: { display: "flex", alignItems: "center", justifyContent: "flex-end" },
-})
-
-export default function PedidoForm({
-  onCreated,
-}: PedidoFormProps) {
-
-  // ==========================================================
-  // BÚSQUEDA
-  // ==========================================================
-
+export default function PedidoForm({ onCreated }: { onCreated?: () => void }) {
+  const navigate = useNavigate()
   const [consecDocto, setConsecDocto] = useState("")
   const [buscando, setBuscando] = useState(false)
-  const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null)
-
-  // ==========================================================
-  // PEDIDO ENCONTRADO (CABECERA + DETALLE)
-  // ==========================================================
-
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [pedido, setPedido] = useState<PedidoSiesa | null>(null)
 
-  // ==========================================================
-  // GUARDAR
-  // ==========================================================
-
-  const [guardando, setGuardando] = useState(false)
-  const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
-
-  const navigate = useNavigate()
-  // ==========================================================
-  // BUSCAR PEDIDO EN SIESA
-  // ==========================================================
-
-  const handleBuscarPedido = async () => {
-
-    if (!consecDocto) {
-      setErrorBusqueda("Ingrese el número de pedido antes de buscar.")
+  const buscar = async () => {
+    const consec = consecDocto.trim()
+    if (!consec) {
+      setError("Escriba el número del pedido antes de buscar.")
       return
     }
-
     setBuscando(true)
-    setErrorBusqueda(null)
+    setError(null)
     setPedido(null)
-
     try {
-
-      const res = await api.get(
-        "/pedido_listar_activo",
-        {
-          params: {
-            f430_consec_docto: consecDocto,
-          },
-        }
-      )
-
+      const res = await api.get("/pedido_listar_activo", { params: { f430_consec_docto: consec } })
       const registros = res.data
-
       if (!Array.isArray(registros) || registros.length === 0) {
-        setErrorBusqueda("No se encontró el pedido en SIESA.")
+        setError(`El pedido ${consec} no está en Siesa, o no está aprobado.`)
         return
       }
-
-      // ==================================================
-      // CABECERA: SE TOMA DEL PRIMER REGISTRO
-      // ==================================================
-
+      // La cabecera sale del primer registro; cada registro es una línea.
       const primero = registros[0]
-
-      const detalle: DetalleItem[] = registros.map((r: any) => ({
-        f120_id: r.f120_id,
-        f120_referencia: r.f120_referencia,
-        f120_descripcion: r.f120_descripcion,
-        f431_cant_pedida_base: r.f431_cant_pedida_base,
-        f431_precio_unitario_base: r.f431_precio_unitario_base,
-        f431_vlr_bruto: r.f431_vlr_bruto,
-        f431_vlr_neto: r.f431_vlr_neto,
-      }))
-
       setPedido({
         f430_consec_docto: primero.f430_consec_docto,
         f430_id_fecha: primero.f430_id_fecha,
@@ -144,286 +80,177 @@ export default function PedidoForm({
         direccion_envio: primero.direccion_envio ?? null,
         ciudad_envio: primero.ciudad_envio ?? null,
         depto_envio: primero.depto_envio ?? null,
-        detalle,
+        detalle: registros.map((r: DetalleItem) => ({
+          f120_id: r.f120_id,
+          f120_referencia: r.f120_referencia,
+          f120_descripcion: r.f120_descripcion,
+          f431_cant_pedida_base: r.f431_cant_pedida_base,
+          f431_precio_unitario_base: r.f431_precio_unitario_base,
+          f431_vlr_bruto: r.f431_vlr_bruto,
+          f431_vlr_neto: r.f431_vlr_neto,
+        })),
       })
-
-    } catch (error: any) {
-
-      console.error(
-        "Error consultando pedido_listar_activo:",
-        error
-      )
-
-      setErrorBusqueda(
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
-        "Error al consultar el pedido en SIESA."
-      )
-
+    } catch (err) {
+      setError(mensajeError(err, "No se pudo consultar el pedido en Siesa."))
     } finally {
-
       setBuscando(false)
-
     }
-
   }
 
-
-  // ==========================================================
-  // GUARDAR PEDIDO EN POSTGRESQL
-  // ==========================================================
-
-  const handleGuardarPedido = async () => {
-
-    if (!pedido) {
-      return
-    }
-
+  const guardar = async () => {
+    if (!pedido) return
     setGuardando(true)
-    setErrorGuardar(null)
-
+    setError(null)
     try {
-
-      await api.post(
-        "/pedido_guardar",
-        {
-          f430_consec_docto: pedido.f430_consec_docto,
-          f430_id_fecha: pedido.f430_id_fecha,
-          f200_razon_social_pedido_fact: pedido.f200_razon_social_pedido_fact,
-          f431_notas: pedido.f431_notas,
-          direccion_envio: pedido.direccion_envio,
-          ciudad_envio: pedido.ciudad_envio,
-          depto_envio: pedido.depto_envio,
-          detalle: pedido.detalle,
-        }
-      )
-
-        setPedido(null)
-        setConsecDocto("")
-        setErrorBusqueda(null)
-
-        navigate("/comercial")
-
-      // ==================================================
-      // LIMPIAR FORMULARIO
-      // ==================================================
-
-      setPedido(null)
-      setConsecDocto("")
-      setErrorBusqueda(null)
-
-      if (onCreated) {
-        onCreated()
-      }
-
-    } catch (error: any) {
-
-      console.error(
-        "Error guardando pedido:",
-        error
-      )
-
-      setErrorGuardar(
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
-        "Error al guardar el pedido."
-      )
-
+      await api.post("/pedido_guardar", {
+        f430_consec_docto: pedido.f430_consec_docto,
+        f430_id_fecha: pedido.f430_id_fecha,
+        f200_razon_social_pedido_fact: pedido.f200_razon_social_pedido_fact,
+        f431_notas: pedido.f431_notas,
+        direccion_envio: pedido.direccion_envio,
+        ciudad_envio: pedido.ciudad_envio,
+        depto_envio: pedido.depto_envio,
+        detalle: pedido.detalle,
+      })
+      onCreated?.()
+      navigate("/comercial")
+    } catch (err) {
+      setError(mensajeError(err, "No se pudo guardar el pedido."))
     } finally {
-
       setGuardando(false)
-
     }
-
   }
 
-
-  // ==========================================================
-  // AG GRID: MÓDULOS, TEMA Y COLUMNAS
-  // ==========================================================
-
-  const modules = [AllCommunityModule]
-
-  const myTheme = themeBalham
-    .withParams({
-      backgroundColor: '#ffffff',
-      foregroundColor: '#070707',
-      headerBackgroundColor: '#adacac47',
-      headerTextColor: 'black',
-      spacing: 4,
-      fontSize: 11,
-      headerFontSize: 12,
-      accentColor: '#b05fee',
-    })
-
-  const defaultColDef = {
-    sortable: true,
-    filter: true,
-    resizable: true,
-    headerClass: "header-center",
-    wrapHeaderText: true,
-    autoHeaderHeight: true,
-    cellStyle: { display: 'flex', alignItems: 'center' },
+  const cancelar = () => {
+    setPedido(null)
+    setConsecDocto("")
+    setError(null)
   }
-  /*
-  const columnDefs: ColDef<DetalleItem>[] = useMemo(() => [
-    { field: "f120_id", headerName: "F120_id", width: 130 },
-    { field: "f120_referencia", headerName: "Referencia", width: 150 },
-    { field: "f120_descripcion", headerName: "Descripción", flex: 1, minWidth: 200 },
-    { field: "f431_cant_pedida_base", headerName: "Cant Pedida", width: 130 },
-    { field: "f431_precio_unitario_base", headerName: "Vlr Unit", width: 130 },
-    { field: "f431_vlr_bruto", headerName: "Vlr Total", width: 130 },
-    { field: "f431_vlr_neto", headerName: "Vlr Total IVA", width: 150 },
-  ], [])
-  */
 
-  const columnDefs: ColDef<DetalleItem>[] = useMemo(() => [
-    { field: "f120_id", headerName: "F120_id", width: 130 },
-    //{ field: "f120_referencia", headerName: "Referencia", width: 150 },
-    { field: "f120_descripcion", headerName: "Descripción", flex: 1, minWidth: 200 },
-    { field: "f431_cant_pedida_base", headerName: "Cant Pedida", width: 130, ...columnaNumerica(formatoNumero) },
-    { field: "f431_precio_unitario_base", headerName: "Vlr Unit", width: 130, ...columnaNumerica(formatoMoneda) },
-    { field: "f431_vlr_bruto", headerName: "Vlr Total", width: 130, ...columnaNumerica(formatoMoneda) },
-    { field: "f431_vlr_neto", headerName: "Vlr Total IVA", width: 150, ...columnaNumerica(formatoMoneda) },
-  ], [])
-
-
-  // ==========================================================
-  // RENDER
-  // ==========================================================
+  const destino = pedido
+    ? [pedido.direccion_envio, [pedido.ciudad_envio, pedido.depto_envio].filter(Boolean).join(", ")].filter(Boolean).join(" · ")
+    : ""
+  const cobre = pedido?.detalle.filter((d) => esCobre(d.f120_id)).length ?? 0
+  const totalNeto = pedido?.detalle.reduce((t, d) => t + aNumero(d.f431_vlr_neto), 0) ?? 0
 
   return (
-
-    <div className="bg-white p-4 xl:p-6 rounded shadow">
-
-      {/* ================================================== */}
-      {/* BUSCADOR */}
-      {/* ================================================== */}
-
-      <div className="mb-4">
-        <label className="block text-xs xl:text-sm font-medium text-gray-700 mb-1">
-          Pedido:
-        </label>
-        <div className="flex gap-2">
-          <input
-            name="f430_consec_docto"
-            placeholder="Número de pedido"
-            value={consecDocto}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            onChange={(e) => setConsecDocto(e.target.value)}
-          />
-          <button
-            type="button"
-            onClick={handleBuscarPedido}
-            disabled={buscando}
-            className="px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs xl:text-sm"
-          >
-            {buscando ? "Buscando..." : "Buscar"}
-          </button>
-        </div>
-        {errorBusqueda && (
-          <p className="text-xs xl:text-sm text-red-600 mt-1">
-            {errorBusqueda}
-          </p>
-        )}
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex items-center gap-4">
+        <Boton variante="secundario" onClick={() => navigate("/comercial")} className="h-11 px-4">
+          <ChevronLeft size={18} /> Pedidos
+        </Boton>
+        <h1 className="display text-[32px] text-cmsa-azul">Nuevo pedido</h1>
       </div>
 
+      <div className="rounded-xl border border-cmsa-borde bg-white p-5">
+        <TituloSeccion className="mb-3">Pedido en Siesa</TituloSeccion>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            buscar()
+          }}
+          className="flex flex-wrap items-end gap-3"
+        >
+          <label className="flex min-w-[260px] flex-1 flex-col gap-1.5">
+            <span className="etiqueta">Número del pedido</span>
+            <input
+              name="f430_consec_docto"
+              inputMode="numeric"
+              placeholder="Número de pedido"
+              value={consecDocto}
+              onChange={(e) => setConsecDocto(e.target.value)}
+              className="campo h-12 text-lg"
+              autoFocus
+            />
+          </label>
+          <Boton type="submit" disabled={buscando} className="h-12">
+            <Search size={18} /> {buscando ? "Buscando…" : "Buscar"}
+          </Boton>
+        </form>
+        <p className="mt-2 text-[14px] text-cmsa-gris">
+          Se lee de Siesa tal como está. El pedido debe estar aprobado o comprometido.
+        </p>
+      </div>
 
-      {/* ================================================== */}
-      {/* RESULTADO DE LA BÚSQUEDA */}
-      {/* ================================================== */}
+      {error && <Aviso tipo="error" titulo={error} onCerrar={() => setError(null)} />}
 
       {pedido && (
-        <>
+        <div className="flex flex-col gap-5 rounded-xl border border-cmsa-borde bg-white p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Chip tono="amarillo">Pedido # {pedido.f430_consec_docto}</Chip>
+            {/* Siesa manda la fecha con hora en ceros: solo el día. */}
+            <Chip tono="profundo">{pedido.f430_id_fecha ? String(pedido.f430_id_fecha).slice(0, 10) : "sin fecha"}</Chip>
+          </div>
 
-          {/* ---------------------------------------------- */}
-          {/* CABECERA EN TEXTO */}
-          {/* ---------------------------------------------- */}
+          <div>
+            <TituloSeccion className="mb-2">Datos del cliente</TituloSeccion>
+            <div className="border border-cmsa-borde bg-cmsa-niebla px-4 py-3.5 text-[15px] leading-relaxed">
+              <strong className="text-base">{pedido.f200_razon_social_pedido_fact}</strong>
+              <br />
+              <b>Despachar a:</b> {destino || "—"}
+              {pedido.f431_notas && (
+                <>
+                  <br />
+                  <b>Notas:</b> {pedido.f431_notas}
+                </>
+              )}
+            </div>
+          </div>
 
-          <div className="mb-4 space-y-1 border border-gray-200 rounded-lg p-3 xl:p-4 bg-gray-50">
-            <p className="text-xs xl:text-sm text-gray-800">
-              <span className="font-semibold">Pedido:</span>{" "}
-              {pedido.f430_consec_docto}
-            </p>
-            <p className="text-xs xl:text-sm text-gray-800">
-              <span className="font-semibold">Fecha:</span>{" "}
-              {pedido.f430_id_fecha}
-            </p>
-            <p className="text-xs xl:text-sm text-gray-800">
-              <span className="font-semibold">Cliente:</span>{" "}
-              {pedido.f200_razon_social_pedido_fact}
-            </p>
-            <p className="text-xs xl:text-sm text-gray-800">
-              <span className="font-semibold">Dirección de envío:</span>{" "}
-              {pedido.direccion_envio || "—"}
-            </p>
-            <p className="text-xs xl:text-sm text-gray-800">
-              <span className="font-semibold">Ciudad:</span>{" "}
-              {pedido.ciudad_envio
-                ? `${pedido.ciudad_envio}${pedido.depto_envio && pedido.depto_envio !== pedido.ciudad_envio ? `, ${pedido.depto_envio}` : ""}`
-                : "—"}
-            </p>
-            <p className="text-xs xl:text-sm text-gray-800">
-              <span className="font-semibold">Notas:</span>{" "}
-              {pedido.f431_notas || "—"}
+          <div>
+            <TituloSeccion className="mb-2">Ítems del pedido</TituloSeccion>
+            <div className="overflow-x-auto">
+              <table className="tabla-cmsa">
+                <thead>
+                  <tr>
+                    <th>Ítem</th>
+                    <th>Descripción</th>
+                    <th>Bodega</th>
+                    <th className="text-right">Cantidad</th>
+                    <th className="text-right">Vlr unitario</th>
+                    <th className="text-right">Vlr total</th>
+                    <th className="text-right">Con IVA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pedido.detalle.map((d) => {
+                    const awg = awgDeItem(d.f120_id)
+                    return (
+                      <tr key={String(d.f120_id)}>
+                        <td className="font-semibold">{d.f120_id}</td>
+                        <td>{d.f120_descripcion}</td>
+                        <td>
+                          {awg !== null ? <Chip tono="azul">AWG {awg}</Chip> : <Chip tono="niebla">No se separa</Chip>}
+                        </td>
+                        <td className="text-right tabular-nums">{numero.format(aNumero(d.f431_cant_pedida_base))}</td>
+                        <td className="text-right tabular-nums">{moneda.format(aNumero(d.f431_precio_unitario_base))}</td>
+                        <td className="text-right tabular-nums">{moneda.format(aNumero(d.f431_vlr_bruto))}</td>
+                        <td className="text-right tabular-nums">{moneda.format(aNumero(d.f431_vlr_neto))}</td>
+                      </tr>
+                    )
+                  })}
+                  <tr>
+                    <td colSpan={6} className="text-right font-bold">TOTAL CON IVA</td>
+                    <td className="text-right font-extrabold tabular-nums text-cmsa-azul">{moneda.format(totalNeto)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-[14px] text-cmsa-gris">
+              {cobre === 0
+                ? "Este pedido no tiene alambre esmaltado de cobre: bodega no tiene nada que escanear."
+                : `${cobre} de ${pedido.detalle.length} líneas son alambre esmaltado de cobre y se separan con la pistola.`}
             </p>
           </div>
 
-          {/* ---------------------------------------------- */}
-          {/* TABLA AG GRID */}
-          {/* ---------------------------------------------- */}
-
-          <div className="mb-4">
-            <AgGridProvider modules={modules}>
-              <div style={{ width: "100%" }}>
-                <AgGridReact<DetalleItem>
-                  theme={myTheme}
-                  rowData={pedido.detalle}
-                  columnDefs={columnDefs}
-                  defaultColDef={defaultColDef}
-                  getRowId={(params) => String(params.data.f120_id)}
-                  domLayout="autoHeight"
-                />
-              </div>
-            </AgGridProvider>
+          <div className="flex justify-end gap-3">
+            <Boton variante="secundario" onClick={cancelar}>Cancelar</Boton>
+            <Boton onClick={guardar} disabled={guardando}>
+              {guardando ? "Guardando…" : "Guardar pedido"}
+            </Boton>
           </div>
-
-          {errorGuardar && (
-            <p className="text-xs xl:text-sm text-red-600 mb-2">
-              {errorGuardar}
-            </p>
-          )}
-
-          {/* ---------------------------------------------- */}
-          {/* BOTONES */}
-          {/* ---------------------------------------------- */}
-
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setPedido(null)
-                setConsecDocto("")
-                setErrorBusqueda(null)
-                setErrorGuardar(null)
-              }}
-              className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs xl:text-sm"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleGuardarPedido}
-              disabled={guardando}
-              className="px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs xl:text-sm"
-            >
-              {guardando ? "Guardando..." : "Guardar Pedido"}
-            </button>
-          </div>
-
-        </>
+        </div>
       )}
-
     </div>
   )
 }

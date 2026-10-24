@@ -12,6 +12,8 @@
 //   remisionado               -> Cumplido   (Siesa 4)
 // ==========================================================
 
+import type { TonoChip } from "../components/ui/Chip"
+
 export type EstadoVisible = "creado" | "separado" | "cumplido"
 
 export const ESTADO_VISIBLE: Record<string, EstadoVisible> = {
@@ -22,10 +24,11 @@ export const ESTADO_VISIBLE: Record<string, EstadoVisible> = {
   remisionado: "cumplido",
 }
 
-export const ESTADOS: Record<EstadoVisible, { texto: string; color: string }> = {
-  creado: { texto: "Creado", color: "bg-cmsa-amarillo text-cmsa-tinta" },
-  separado: { texto: "Separado", color: "bg-cmsa-azul text-white" },
-  cumplido: { texto: "Cumplido", color: "bg-green-100 text-green-700" },
+/** Texto y tono del chip (sistema de diseño): Creado amarillo, Separado azul, Cumplido verde. */
+export const ESTADOS: Record<EstadoVisible, { texto: string; tono: TonoChip }> = {
+  creado: { texto: "Creado", tono: "amarillo" },
+  separado: { texto: "Separado", tono: "azul" },
+  cumplido: { texto: "Cumplido", tono: "ok" },
 }
 
 // Estados de Siesa esperados para cada estado visible (comercial compromete al crear)
@@ -39,11 +42,11 @@ const NOMBRE_SIESA: Record<number, string> = {
   0: "En elaboración", 1: "Retenido", 2: "Aprobado", 3: "Comprometido", 4: "Cumplido", 9: "Anulado",
 }
 
-export function estadoPedido(estadoInterno: string) {
+export function estadoPedido(estadoInterno: string): { clave: EstadoVisible | null; texto: string; tono: TonoChip } {
   const visible = ESTADO_VISIBLE[estadoInterno]
   return visible
     ? { clave: visible, ...ESTADOS[visible] }
-    : { clave: null, texto: estadoInterno, color: "bg-gray-100 text-gray-700" }
+    : { clave: null, texto: estadoInterno, tono: "niebla" }
 }
 
 // Aviso solo cuando Siesa dice otra cosa (p. ej. el pedido quedó Retenido o Anulado allá)
