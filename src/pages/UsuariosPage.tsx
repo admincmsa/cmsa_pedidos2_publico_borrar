@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import api, { mensajeError } from "../services/api"
 import Modal from "../components/ui/Modal"
-import { useAuth } from "../context/AuthContext"
+import { useAuth } from "../context/useAuth"
 import { UserPlus, Pencil, KeyRound, UserX, UserCheck, RefreshCw } from "lucide-react"
 
 interface Usuario {

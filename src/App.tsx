@@ -317,7 +317,8 @@ export default function App() {
 
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
-import { AuthProvider, useAuth } from "./context/AuthContext"
+import { AuthProvider } from "./context/AuthContext"
+import { useAuth } from "./context/useAuth"
 import ProtectedRoute from "./components/ProtectedRoute"
 import { Sidebar } from "./components/layout/Sidebar"
 import Login from "./pages/Login"

@@ -75,10 +75,11 @@ api.interceptors.response.use(
 
 
 // Mensaje legible de un error del backend (incluye la lista de errores de Siesa)
-export function mensajeError(err: any, porDefecto: string): string {
-  const data = err?.response?.data
+export function mensajeError(err: unknown, porDefecto: string): string {
+  const e = err as { response?: { data?: { error?: string; errores?: string[] } }; message?: string } | null
+  const data = e?.response?.data
   if (data?.errores?.length && !data?.error) return data.errores.join("\n")
-  return data?.error || err?.message || porDefecto
+  return data?.error || e?.message || porDefecto
 }
 
 export default api

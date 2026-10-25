@@ -113,8 +113,10 @@ export default function InventarioPage() {
     cargarResumen()
   }, [])
 
+  // La serie se busca al enviar el formulario, no con cada tecla: por eso serieBuscar no va en la lista.
   useEffect(() => {
     if (itemSel || serieBuscar || verPendientes) cargarRollos(itemSel?.id_item ?? null, serieBuscar)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemSel, soloDisponibles, verPendientes])
 
   const totales = resumen.reduce(

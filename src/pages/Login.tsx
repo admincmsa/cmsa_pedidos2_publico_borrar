@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { useAuth } from "../context/AuthContext"
+import { useAuth } from "../context/useAuth"
 import { mensajeError } from "../services/api"
 import logo_cmsa from "../logo-cmsa.png"
 import logo_isashi from "../Logo-Isashii2-1.png"

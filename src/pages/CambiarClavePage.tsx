@@ -1,6 +1,6 @@
 import { useState } from "react"
 import api, { mensajeError } from "../services/api"
-import { useAuth } from "../context/AuthContext"
+import { useAuth } from "../context/useAuth"
 import { KeyRound } from "lucide-react"
 
 const campo =
@@ -26,6 +26,8 @@ export default function CambiarClavePage() {
     setGuardando(true)
     try {
       const res = await api.put("/cambiar_clave", { clave_actual: actual, clave_nueva: nueva })
+      // Cambiar la clave cierra las sesiones abiertas con la anterior; esta sigue con el token nuevo.
+      if (res.data?.token) localStorage.setItem("token", res.data.token)
       setOk(res.data?.mensaje || "Contraseña actualizada")
       setActual("")
       setNueva("")

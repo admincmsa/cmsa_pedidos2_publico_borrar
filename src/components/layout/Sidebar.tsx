@@ -11,7 +11,7 @@ import {
   ChevronRight,
   type LucideIcon,
 } from "lucide-react"
-import { useAuth } from "../../context/AuthContext"
+import { useAuth } from "../../context/useAuth"
 import logoCmsa from "../../logo-cmsa.svg"
 import iconoCmsa from "../../logo-cmsa-icono.svg"
 
