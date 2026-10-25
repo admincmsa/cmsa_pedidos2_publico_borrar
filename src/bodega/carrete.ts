@@ -27,8 +27,8 @@ export const AWG_MAX = 37
 /** Entre calibres vecinos hay ~12 %; IRCE se aparta menos de 0,5 %. */
 export const TOLERANCIA_DIAMETRO_PCT = 3
 
-/** Peso aceptable de un carrete, en kg. Fuera de ahí la lectura está dañada. */
-export const PESO_MIN = 0
+/** Peso aceptable de un carrete, en kg (PESO_MIN_KG y PESO_MAX_KG del backend). Fuera de ahí la lectura está dañada. */
+export const PESO_MIN = 0.01
 export const PESO_MAX = 100
 
 /** Diámetro nominal AWG en mm: 0,127 · 92^((36 − AWG) / 39). */
@@ -112,15 +112,26 @@ export type ResultadoLectura =
 /** ¿El texto del campo ya es una lectura completa? */
 export function esLecturaCompleta(texto: string): boolean {
   const t = String(texto ?? "").trim()
-  return /#P#$/i.test(t) || /^\d{8}$/.test(t)
+  return /#\s*P\s*#$/i.test(t) || /^\d{8}$/.test(t)
+}
+
+const DOS_CARRETES = {
+  ok: false as const,
+  titulo: "Se leyeron dos carretes juntos",
+  detalle: "Escanee un solo carrete y espere a que aparezca en la lista.",
 }
 
 /**
  * Interpreta lo que llegó al campo de escaneo.
  *
- * Rechaza, con el mismo criterio del backend: dos QR pegados, una serie que no
- * tiene 8 dígitos, un peso fuera de rango y un texto sin `#` (pasa cuando el
- * teclado de la tablet está en otro idioma y la pistola escribe otra cosa).
+ * Con la misma gramática del backend (parsear_qr_carrete y
+ * decodificar_codigo_proveedor en siesa_codigos.py): segmentos separados por
+ * `#`, sin importar espacios alrededor, el orden ni mayúsculas; Q, S y L una
+ * sola vez cada uno. Rechaza dos QR pegados, un peso que no es número o está
+ * fuera de rango, una serie que no tiene 8 dígitos, un código del proveedor
+ * que no tiene 12 caracteres o cuyo diámetro no es un calibre, y un texto sin
+ * `#` (pasa cuando el teclado de la tablet está en otro idioma y la pistola
+ * escribe otra cosa). Los casos de los dos lados están en qr_contrato.json.
  */
 export function leerCodigo(texto: string): ResultadoLectura {
   const t = String(texto ?? "").trim()
@@ -146,39 +157,46 @@ export function leerCodigo(texto: string): ResultadoLectura {
     }
   }
 
-  if ((t.match(/#S/g) || []).length > 1) {
-    return {
-      ok: false,
-      titulo: "Se leyeron dos carretes juntos",
-      detalle: "Escanee un solo carrete y espere a que aparezca en la lista.",
-    }
+  const campos: Record<string, string> = {}
+  for (const seg of t.split("#").map((s) => s.trim()).filter(Boolean)) {
+    const letra = seg[0].toUpperCase()
+    if (!"QSL".includes(letra)) continue
+    if (letra in campos) return DOS_CARRETES
+    campos[letra] = seg.slice(1).trim()
   }
-
-  const m = t.match(/Q([\d.,]+)#S(\d+)#L([0-9A-Za-z]+)#/i)
-  if (!m) {
+  if (campos.Q === undefined || !campos.S || !campos.L) {
     return { ok: false, titulo: "No se pudo leer el QR", detalle: "Escanee otra vez, apuntando a la etiqueta completa." }
   }
 
-  const serie = m[2]
-  if (serie.length !== 8) {
-    return {
-      ok: false,
-      titulo: "La serie del QR no tiene 8 dígitos",
-      detalle: `El QR trae ${serie || "nada"}. Escanee otra vez o escriba los 8 dígitos del carrete.`,
-    }
-  }
-
-  const kilos = parseFloat(m[1].replace(",", "."))
-  if (!Number.isFinite(kilos) || kilos <= PESO_MIN || kilos > PESO_MAX) {
+  const textoPeso = campos.Q.replace(/,/g, ".")
+  const kilos = Number(textoPeso)
+  if (!/^\d+(\.\d+)?$/.test(textoPeso) || kilos < PESO_MIN || kilos > PESO_MAX) {
     return {
       ok: false,
       titulo: "El peso del QR no es válido",
-      detalle: `La lectura dice ${m[1]} kg. Escanee otra vez o escriba los 8 dígitos del carrete.`,
+      detalle: `La lectura dice ${campos.Q || "nada"} kg. Escanee otra vez o escriba los 8 dígitos del carrete.`,
     }
   }
 
-  const codigo = m[3]
-  const awg = codigo.length >= 10 ? awgPorDiametro(Number(codigo.slice(6, 10))) : null
+  const serie = campos.S
+  if (!/^\d{8}$/.test(serie)) {
+    return {
+      ok: false,
+      titulo: "La serie del QR no tiene 8 dígitos",
+      detalle: `El QR trae ${serie}. Escanee otra vez o escriba los 8 dígitos del carrete.`,
+    }
+  }
+
+  const codigo = campos.L.replace(/\s/g, "").toUpperCase()
+  const diametro = codigo.slice(6, 10)
+  const awg = codigo.length === 12 && /^\d{4}$/.test(diametro) ? awgPorDiametro(Number(diametro)) : null
+  if (awg === null) {
+    return {
+      ok: false,
+      titulo: "El código del proveedor no es válido",
+      detalle: `El QR trae ${codigo}: debe tener 12 caracteres con el diámetro de un calibre. Escanee otra vez o escriba los 8 dígitos del carrete.`,
+    }
+  }
 
   return { ok: true, lectura: { serie, kilos, codigo, awg, manual: false, texto: t } }
 }

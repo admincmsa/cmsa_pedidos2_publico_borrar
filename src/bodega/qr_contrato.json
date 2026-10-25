@@ -1,0 +1,31 @@
+{
+  "descripcion": "Contrato del QR del carrete: el backend (siesa_codigos.decodificar_carrete_completo) y la pantalla (src/bodega/carrete.ts, leerCodigo) aceptan y rechazan lo mismo. Copia idéntica en cmsa_pedidos2/src/bodega/qr_contrato.json: si cambia uno, cambiar el otro.",
+  "casos": [
+    {"nombre": "original", "texto": "Q19.25#S36789380#L126200102406#P#", "ok": true, "serie": "36789380", "kilos": 19.25, "awg": 18},
+    {"nombre": "otro calibre", "texto": "Q11.22#S34193108#L126200036105#P#", "ok": true, "serie": "34193108", "kilos": 11.22, "awg": 27},
+    {"nombre": "carrete P355", "texto": "Q42.7#S36662002#L12620025880A#P#", "ok": true, "serie": "36662002", "kilos": 42.7, "awg": 10},
+    {"nombre": "minúsculas", "texto": "q19.25#s36789380#l126200102406#p#", "ok": true, "serie": "36789380", "kilos": 19.25, "awg": 18},
+    {"nombre": "espacios alrededor de #", "texto": "Q19.25 # S36789380 # L126200102406 # P # ", "ok": true, "serie": "36789380", "kilos": 19.25, "awg": 18},
+    {"nombre": "campos en otro orden", "texto": "S36789380#Q19.25#L126200102406#P#", "ok": true, "serie": "36789380", "kilos": 19.25, "awg": 18},
+    {"nombre": "coma decimal", "texto": "Q19,25#S36789380#L126200102406#P#", "ok": true, "serie": "36789380", "kilos": 19.25, "awg": 18},
+    {"nombre": "peso entero", "texto": "Q20#S36789380#L126200102406#P#", "ok": true, "serie": "36789380", "kilos": 20, "awg": 18},
+    {"nombre": "dos QR pegados", "texto": "Q19.25#S36789380#L126200102406#P#Q19.25#S36789381#L126200102406#P#", "ok": false},
+    {"nombre": "dos QR en minúsculas", "texto": "q19.25#s36789380#l126200102406#p#q19.25#s36789380#l126200102406#p#", "ok": false},
+    {"nombre": "dos QR mixtos", "texto": "Q19.25#S36789380#L126200102406#P#q19.25#s36789380#l126200102406#p#", "ok": false},
+    {"nombre": "peso con dos puntos", "texto": "Q42.7.5#S36789380#L126200102406#P#", "ok": false},
+    {"nombre": "peso con exponente", "texto": "Q1e1#S36789380#L126200102406#P#", "ok": false},
+    {"nombre": "peso no numérico", "texto": "Qnan#S36789380#L126200102406#P#", "ok": false},
+    {"nombre": "peso cero", "texto": "Q0#S36789380#L126200102406#P#", "ok": false},
+    {"nombre": "peso sobre 100 kg", "texto": "Q100.5#S36789380#L126200102406#P#", "ok": false},
+    {"nombre": "sin peso", "texto": "Q#S36789380#L126200102406#P#", "ok": false},
+    {"nombre": "serie de 7 dígitos", "texto": "Q19.25#S3678938#L126200102406#P#", "ok": false},
+    {"nombre": "serie con letra", "texto": "Q19.25#S3678938A#L126200102406#P#", "ok": false},
+    {"nombre": "código del proveedor corto", "texto": "Q19.25#S36789380#L12620010240#P#", "ok": false},
+    {"nombre": "código del proveedor largo", "texto": "Q19.25#S36789380#L1262001024060#P#", "ok": false},
+    {"nombre": "diámetro que no es calibre", "texto": "Q19.25#S36789380#L126200999906#P#", "ok": false},
+    {"nombre": "diámetro con letra", "texto": "Q19.25#S36789380#L1262001A2406#P#", "ok": false},
+    {"nombre": "falta el código del proveedor", "texto": "Q19.25#S36789380#P#", "ok": false},
+    {"nombre": "falta la serie", "texto": "Q19.25#L126200102406#P#", "ok": false},
+    {"nombre": "sin # (teclado en otro idioma)", "texto": "Q19.25S36789380L126200102406P", "ok": false}
+  ]
+}
